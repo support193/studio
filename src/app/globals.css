@@ -1,0 +1,516 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   CSS Variables & Theme Configuration
+   ========================================================================== */
+
+@theme inline {
+  --font-manrope: var(--font-manrope);
+  --font-zen-antique: var(--font-zen-antique);
+
+  /* Core Colors */
+  --color-background: var(--background);
+  --color-secondary-background: var(--secondary-background);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary: var(--primary);
+  --color-destructive: var(--destructive);
+
+  /* Borders & Inputs */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-muted-border: var(--muted-border);
+  --color-divider: var(--divider);
+  --color-ring: var(--ring);
+  --color-skeleton: var(--skeleton);
+
+  /* Status Colors */
+  --color-status-uploading: var(--status-uploading);
+  --color-status-labeling: var(--status-labeling);
+  --color-status-labeling-progress: var(--status-labeling-progress);
+  --color-status-qa: var(--status-qa);
+  --color-status-qa-progress: var(--status-qa-progress);
+  --color-status-completed: var(--status-completed);
+  --color-status-reject: var(--status-reject);
+
+  /* Component-specific Colors */
+  --color-button-outline: var(--button-outline);
+  --color-button-secondary-foreground: var(--button-secondary-foreground);
+  --color-card-border: var(--card-border);
+  --color-card-muted-border: var(--card-muted-border);
+
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --color-table-header-foreground: var(--table-header-foreground);
+  --color-table-cell-foreground: var(--table-cell-foreground);
+  --color-table-cell-muted-foreground: var(--table-cell-muted-foreground);
+  --color-table-border: var(--table-border);
+  --color-tabs-muted-foreground: var(--tabs-muted-foreground);
+
+  /* Gradients */
+  --background-image-gradient-sidebar-badge: var(--gradient-sidebar-badge);
+  --background-image-gradient-sidebar-active: var(--gradient-sidebar-active);
+  --background-image-gradient-table-header: var(--gradient-table-header);
+  --background-image-gradient-tabs-active: var(--gradient-tabs-active);
+  --background-image-gradient-card-1: var(--gradient-card-gradient-1);
+  --background-image-gradient-card-2: var(--gradient-card-gradient-2);
+  --background-image-gradient-status-labeling: var(--gradient-status-labeling);
+  --background-image-gradient-status-qa: var(--gradient-status-qa);
+  --background-image-gradient-status-completed: var(--gradient-status-completed);
+  --background-image-gradient-status-reject: var(--gradient-status-reject);
+
+  /* Animations */
+  --animate-marquee-left: var(--animate-marquee-left);
+  --animate-marquee-right: var(--animate-marquee-right);
+
+  /* Studio-specific overrides */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-hover: var(--bg-surface-hover);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-border-default: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-accent: var(--border-accent);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-accent-purple: var(--accent-purple);
+  --color-status-active: var(--status-active);
+  --color-status-warning: var(--status-warning);
+}
+
+:root {
+  /* ---- ZenO Design System (shared with app.zen-o.xyz) ---- */
+
+  /* Core palette */
+  --background: #0A0A0F;
+  --secondary-background: #111118;
+  --foreground: #f8f9fa;
+  --muted-foreground: #8A8A9A;
+  --secondary-foreground: #555566;
+  --primary: #7C5CFC;
+  --destructive: #EF4444;
+
+  /* Borders & inputs */
+  --border: #222230;
+  --input: #757685;
+  --muted-border: #757685;
+  --divider: #d8e2ff1f;
+  --ring: #535357;
+  --skeleton: #222230;
+
+  /* Button */
+  --button-outline: #323233;
+  --button-secondary-foreground: #bebebf;
+
+  /* Card */
+  --card-border: #1b1c1f;
+  --card-muted-border: var(--muted-border);
+
+  /* Sidebar */
+  --sidebar-foreground: #f8f9fa;
+  --sidebar-muted-foreground: #535357;
+
+  /* Table */
+  --table-header-foreground: #7a7b80;
+  --table-cell-foreground: #a8aabf;
+  --table-cell-muted-foreground: #c4c5cc;
+  --table-border: #16171a;
+
+  /* Tabs */
+  --tabs-muted-foreground: #7e7f80;
+
+  /* Gradients */
+  --gradient-card-gradient-1: linear-gradient(
+    95deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0) 130.45%
+  );
+  --gradient-card-gradient-2: linear-gradient(
+    106deg,
+    var(--muted-border) -58.59%,
+    var(--background) 24.88%
+  );
+  --gradient-sidebar-active: linear-gradient(92deg, #1C1C26 0%, #0A0A0F 100%);
+  --gradient-sidebar-badge: linear-gradient(
+    243deg,
+    var(--card-muted-border) -157.26%,
+    var(--card-border) 53.19%
+  );
+  --gradient-table-header: linear-gradient(
+    90deg,
+    #0a0a0f 0%,
+    #111118 50%,
+    #0a0a0f 99.99%
+  );
+  --gradient-tabs-active: linear-gradient(
+    109deg,
+    var(--muted-border) -112.95%,
+    var(--secondary-background) 25.89%
+  );
+
+  /* Status */
+  --status-uploading: #222230;
+  --status-labeling: #202613;
+  --status-labeling-progress: #aeff18;
+  --status-qa: #132620;
+  --status-qa-progress: #323233;
+  --status-completed: #131526;
+  --status-completed-progress: #7C5CFC;
+  --status-reject: #261313;
+  --status-reject-progress: #EF4444;
+
+  --gradient-status-labeling: linear-gradient(
+    140deg,
+    rgba(174, 255, 24, 0.5) -47.56%,
+    rgba(174, 255, 24, 0) 47.47%
+  );
+  --gradient-status-qa: linear-gradient(
+    140deg,
+    rgba(24, 255, 178, 0.5) -47.56%,
+    rgba(24, 255, 178, 0) 47.47%
+  );
+  --gradient-status-completed: linear-gradient(
+    140deg,
+    rgba(124, 92, 252, 0.5) -47.56%,
+    rgba(124, 92, 252, 0) 47.47%
+  );
+  --gradient-status-reject: linear-gradient(
+    140deg,
+    rgba(239, 68, 68, 0.5) -47.56%,
+    rgba(239, 68, 68, 0) 47.47%
+  );
+
+  --gradient-border-default: linear-gradient(
+    125deg,
+    #757685,
+    #1b1c1f 40%,
+    #1b1c1f
+  );
+  --gradient-border-light: linear-gradient(
+    125deg,
+    #dcdefa,
+    #1b1c1f 40%,
+    #1b1c1f
+  );
+
+  /* Animations */
+  --animate-marquee-left: marquee-left 30s linear infinite;
+  --animate-marquee-right: marquee-right 30s linear infinite;
+
+  /* ---- Studio-specific tokens ---- */
+  --bg-primary: #0A0A0F;
+  --bg-secondary: #111118;
+  --bg-surface: #16161E;
+  --bg-surface-hover: #1C1C26;
+  --bg-elevated: #1E1E28;
+  --border-default: #222230;
+  --border-subtle: #1A1A25;
+  --border-accent: #3B3B5C;
+  --border-glow: rgba(120, 80, 255, 0.15);
+  --text-primary: #FFFFFF;
+  --text-secondary: #8A8A9A;
+  --text-tertiary: #555566;
+  --text-link: #FFFFFF;
+  --accent-purple: #7C5CFC;
+  --accent-purple-dim: rgba(124, 92, 252, 0.12);
+  --status-active: #22C55E;
+  --status-active-bg: rgba(34, 197, 94, 0.15);
+  --status-warning: #EF4444;
+  --status-neutral: #8A8A9A;
+  --badge-bg: rgba(255, 255, 255, 0.08);
+  --badge-border: rgba(255, 255, 255, 0.12);
+  --badge-text: #CCCCDD;
+  --xp-bg: rgba(255, 255, 255, 0.06);
+  --xp-border: rgba(255, 255, 255, 0.10);
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --content-padding: 32px;
+}
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+
+@layer base {
+  html,
+  body {
+    @apply h-full overflow-x-hidden;
+  }
+
+  body {
+    @apply font-manrope bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* ==========================================================================
+   Background Utilities
+   ========================================================================== */
+
+/* Glass Effect Backgrounds */
+@utility bg-glass-gray {
+  background: rgba(248, 249, 250, 0.01);
+  backdrop-filter: blur(20px) saturate(200%);
+  box-shadow:
+    0 -4px 4px 0 rgba(0, 0, 0, 0.04) inset,
+    0 4px 4px 0 rgba(0, 0, 0, 0.2) inset,
+    inset 0.6px 0.6px 0 rgba(117, 118, 133, 0.8),
+    inset -0.6px -0.6px 0 rgba(117, 118, 133, 0.8);
+}
+
+@utility bg-glass-white {
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow:
+    0 -4px 4px 0 rgba(255, 255, 255, 0.04) inset,
+    0 4px 4px 0 rgba(0, 0, 0, 0.2) inset;
+  backdrop-filter: blur(2px);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 0.6px;
+    background: linear-gradient(172deg, #f8f9fa, transparent, #f8f9fa);
+    border-radius: inherit;
+    mask:
+      conic-gradient(#000 0 0) content-box exclude,
+      conic-gradient(#000 0 0);
+  }
+}
+
+@utility bg-glass-button {
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow:
+    0 -4px 4px 0 rgba(255, 255, 255, 0.04) inset,
+    0 4px 4px 0 rgba(0, 0, 0, 0.2) inset;
+  backdrop-filter: blur(2px);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 0.6px;
+    background: linear-gradient(163deg, #f8f9fa, transparent, #f8f9fa);
+    border-radius: inherit;
+    mask:
+      conic-gradient(#000 0 0) content-box exclude,
+      conic-gradient(#000 0 0);
+    pointer-events: none;
+  }
+}
+
+@utility bg-timer {
+  background: linear-gradient(
+    90deg,
+    rgba(10, 10, 15, 0) 0%,
+    #0A0A0F 50%,
+    rgba(10, 10, 15, 0) 100%
+  );
+}
+
+@utility bg-wallet-connect-overlay {
+  background: linear-gradient(
+    132deg,
+    #757685 -239.4%,
+    rgba(4, 4, 4, 0.5) 65.33%
+  );
+  backdrop-filter: blur(10px);
+}
+
+@utility bg-wallet-connect-card {
+  background: rgba(248, 249, 250, 0.01);
+}
+
+/* ==========================================================================
+   Border Utilities
+   ========================================================================== */
+
+@utility border-gradient-light {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 0.6px;
+    background: var(--gradient-border-light);
+    border-radius: inherit;
+    pointer-events: none;
+    mask:
+      conic-gradient(#000 0 0) content-box exclude,
+      conic-gradient(#000 0 0);
+  }
+}
+
+@utility border-gradient-default {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 0.6px;
+    background: var(--gradient-border-default);
+    border-radius: inherit;
+    pointer-events: none;
+    mask:
+      conic-gradient(#000 0 0) content-box exclude,
+      conic-gradient(#000 0 0);
+  }
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes marquee-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes marquee-right {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* ==========================================================================
+   Scrollbar Styling
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-accent);
+}
+
+/* ----------------------------------------------------------------------------
+ * Native <select> dropdown options
+ * 브라우저별로 <option> 배경/글자색이 OS 설정을 따라가서 다크 테마에서
+ * 흰 글자 + 흰 배경으로 안 보이는 문제 → 명시적 스타일로 강제.
+ * -------------------------------------------------------------------------- */
+select option {
+  background-color: #12121A;
+  color: #e5e5ea;
+}
+select option:checked,
+select option:hover {
+  background-color: #7C5CFC;
+  color: #ffffff;
+}
+
+/* ----------------------------------------------------------------------------
+ * Markdown rendering — used by /admin/docs (react-markdown + remark-gfm).
+ * Minimal, dark-mode-aware, purple accent for headings.
+ * -------------------------------------------------------------------------- */
+.prose-doc {
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.7;
+  max-width: 80ch;
+}
+.prose-doc h1 {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-default);
+}
+.prose-doc h2 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 28px 0 12px;
+  color: #a78bfa;
+}
+.prose-doc h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0 8px;
+}
+.prose-doc h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 16px 0 6px;
+  color: var(--muted-foreground);
+}
+.prose-doc p { margin: 8px 0; }
+.prose-doc ul, .prose-doc ol { margin: 8px 0; padding-left: 24px; }
+.prose-doc li { margin: 4px 0; }
+.prose-doc code {
+  background: rgba(124, 92, 252, 0.12);
+  color: #c4b5fd;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+.prose-doc pre {
+  background: #0a0a10;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.prose-doc pre code {
+  background: transparent;
+  color: #e5e5ea;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.prose-doc table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.prose-doc th, .prose-doc td {
+  border: 1px solid var(--border-default);
+  padding: 6px 10px;
+  text-align: left;
+}
+.prose-doc th {
+  background: rgba(124, 92, 252, 0.08);
+  font-weight: 600;
+}
+.prose-doc a { color: #a78bfa; text-decoration: underline; text-underline-offset: 2px; }
+.prose-doc a:hover { color: #c4b5fd; }
+.prose-doc blockquote {
+  border-left: 3px solid #7C5CFC;
+  padding: 4px 12px;
+  margin: 12px 0;
+  color: var(--muted-foreground);
+  background: rgba(124, 92, 252, 0.04);
+}
+.prose-doc hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 24px 0;
+}
