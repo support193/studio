@@ -4,27 +4,32 @@
 'use client';
 
 import { Suspense, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
 import { usePandaV3Controls } from '@/hooks/usePandaV3Controls';
 import type { PandaV3FrameSnapshot } from '@/hooks/useMujocoPhysicsPandaV3';
 
 export default function PandaDemoPage() {
   return (
-    <Suspense fallback={<div className="h-screen w-full bg-[#0A0A0F]" />}>
+    <Suspense fallback={<div className="h-screen w-full bg-[#000]" />}>
       <PandaDemoInner />
     </Suspense>
   );
 }
 
 function PandaDemoInner() {
+  const sp = useSearchParams();
+  const promo = sp.get('promo') === '1';
   const [showHelp, setShowHelp] = useState(true);
   const [sensitivity, setSensitivity] = useState(100);
   const frameDataRef = useRef<PandaV3FrameSnapshot | null>(null);
   const controls = usePandaV3Controls();
 
   return (
-    <div className="relative h-[calc(100vh-52px)] w-full bg-[#0A0A0F]">
-      <PandaV3Scene controls={controls} frameDataRef={frameDataRef} />
+    <div className={`relative w-full ${promo ? 'fixed inset-0 z-[9999] h-screen bg-black' : 'h-[calc(100vh-52px)] bg-[#0A0A0F]'}`}>
+      <PandaV3Scene controls={controls} frameDataRef={frameDataRef} promo={promo} />
+      {!promo && <>
+
 
       {/* Brand badge — top-left */}
       <div className="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-2">
@@ -99,6 +104,7 @@ function PandaDemoInner() {
           <span>300%</span>
         </div>
       </div>
+      </>}
     </div>
   );
 }

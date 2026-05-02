@@ -110,16 +110,15 @@ function SceneContent({
   controls,
   frameDataRef,
   onPhysHandle,
+  promo = false,
 }: {
   controls: PandaV3Controls;
   frameDataRef: React.MutableRefObject<PandaV3FrameSnapshot | null>;
   onPhysHandle?: (h: PandaV3PhysicsHandle) => void;
+  promo?: boolean;
 }) {
   const phys = useMujocoPhysicsPandaV3(true, controls, frameDataRef);
 
-  // Hand the physics handle (state + refs) up to parent for HUD polling.
-  // Effect — fires on stable state transitions only (loaded false→true,
-  // error null→string), not every RAF tick.
   useEffect(() => {
     if (onPhysHandle) onPhysHandle(phys);
   }, [phys, onPhysHandle]);
@@ -133,9 +132,8 @@ function SceneContent({
   return (
     <>
       <ZUpLights />
-      <ZUpFloor />
+      {!promo && <ZUpFloor />}
       <Environment preset="warehouse" />
-      {/* OrbitControls target = MuJoCo (0, 0, 0.4) — 40cm above base in Z. */}
       <OrbitControls
         target={[0, 0, 0.4]}
         minDistance={0.6}
@@ -215,10 +213,13 @@ export function PandaV3Scene({
   controls,
   frameDataRef,
   onPhysHandle,
+  promo = false,
 }: {
   controls: PandaV3Controls;
   frameDataRef: React.MutableRefObject<PandaV3FrameSnapshot | null>;
   onPhysHandle?: (h: PandaV3PhysicsHandle) => void;
+  /** Promo mode: hides the floor + grid for a clean black-bg screenshot. */
+  promo?: boolean;
 }) {
   return (
     <div className="h-full w-full">
@@ -232,7 +233,7 @@ export function PandaV3Scene({
         gl={{ antialias: true }}
       >
         <Suspense fallback={null}>
-          <SceneContent controls={controls} frameDataRef={frameDataRef} onPhysHandle={onPhysHandle} />
+          <SceneContent controls={controls} frameDataRef={frameDataRef} onPhysHandle={onPhysHandle} promo={promo} />
         </Suspense>
       </Canvas>
     </div>
