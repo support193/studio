@@ -27,7 +27,15 @@ export async function middleware(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const path = req.nextUrl.pathname;
 
-  // /admin/* requires login except /admin/login itself.
+  // Admin allowlist — only emails in ADMIN_EMAILS env get past the gate.
+  // Self-signup하더라도 이 화이트리스트에 없으면 즉시 로그아웃 + 차단.
+  const adminEmails = (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const isAllowedAdmin = !!user && adminEmails.includes((user.email ?? '').toLowerCase());
+
+  // /admin/* requires login + allowlist except /admin/login itself.
   if (path.startsWith('/admin') && path !== '/admin/login') {
     if (!user) {
       const url = req.nextUrl.clone();
@@ -35,10 +43,18 @@ export async function middleware(req: NextRequest) {
       url.searchParams.set('next', path);
       return NextResponse.redirect(url);
     }
+    if (!isAllowedAdmin) {
+      // Authenticated but not on the allowlist — sign out and redirect.
+      await supabase.auth.signOut();
+      const url = req.nextUrl.clone();
+      url.pathname = '/admin/login';
+      url.searchParams.set('error', 'not_allowed');
+      return NextResponse.redirect(url);
+    }
   }
 
-  // If already logged in and visiting /admin/login, redirect to /admin.
-  if (path === '/admin/login' && user) {
+  // If already an authorized admin and visiting /admin/login, redirect to /admin.
+  if (path === '/admin/login' && isAllowedAdmin) {
     const url = req.nextUrl.clone();
     url.pathname = '/admin';
     return NextResponse.redirect(url);

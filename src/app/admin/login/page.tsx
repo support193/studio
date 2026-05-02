@@ -16,10 +16,13 @@ function Inner() {
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get('next') || '/admin';
+  const errCode = sp.get('error');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    errCode === 'not_allowed' ? 'This account is not authorized for admin access.' : null,
+  );
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
