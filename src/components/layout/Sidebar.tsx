@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Box, ChevronUp } from 'lucide-react';
+import { Box, ChevronUp, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 type SubItem = { href: string; label: string };
@@ -19,7 +19,7 @@ const STUDIO_ITEMS: SubItem[] = [
   { href: '/test',     label: 'Test' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname();
   const [studioOpen, setStudioOpen] = useState(true);
 
@@ -72,6 +72,24 @@ export default function Sidebar() {
               );
             })}
           </>
+        )}
+
+        {/* Admin — only visible when signed in. */}
+        {isAuthed && (
+          <Link
+            href="/admin"
+            className={cn(
+              'mt-auto flex w-[216px] items-center justify-between rounded-[8px] p-[12px] transition-colors',
+              pathname.startsWith('/admin')
+                ? 'bg-gradient-sidebar-active text-[#f8f9fa]'
+                : 'text-[#535357] hover:text-[#f8f9fa]',
+            )}
+          >
+            <span className="flex items-center gap-[10px]">
+              <Shield size={20} strokeWidth={1.5} />
+              <span className="font-manrope text-[14px] leading-[1.4]">Admin</span>
+            </span>
+          </Link>
         )}
       </nav>
     </aside>
