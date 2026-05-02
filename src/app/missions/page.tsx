@@ -189,20 +189,27 @@ function MissionCardEl({ card }: { card: MissionCard }) {
           'relative flex h-[240px] w-full flex-col items-start justify-between overflow-hidden rounded-[16px] p-[20px]',
           card.featured
             ? 'border border-[rgba(248,249,250,0.3)] bg-gradient-to-r from-[rgba(248,249,250,0)] to-[rgba(248,249,250,0.1)]'
-            : '',
+            : 'border border-[rgba(255,255,255,0.7)]',
         ].join(' ')}
+        style={card.featured ? undefined : {
+          // Figma: linear-gradient(-90deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)
+          backgroundImage: 'linear-gradient(-90deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
+          backdropFilter: 'blur(21px)',
+        }}
       >
-        {/* Background plate (gradient overlay — featured 카드는 자체 그라데이션) */}
+        {/* Noise / grain texture overlay — Figma uses mix-blend-mode: soft-light
+            with opacity ~0.2 to add a subtle "fabric" feel.  Generated via
+            inline SVG <feTurbulence> so no external asset is required. */}
         {!card.featured && (
-          <div className="pointer-events-none absolute inset-0 rounded-[16px]">
-            <div
-              className="absolute inset-0 backdrop-blur-[21px]"
-              style={{
-                background:
-                  'linear-gradient(-90deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
-              }}
-            />
-          </div>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[16px]"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>")`,
+              mixBlendMode: 'soft-light',
+              opacity: 0.2,
+            }}
+          />
         )}
 
         {/* Top row — category badge */}
