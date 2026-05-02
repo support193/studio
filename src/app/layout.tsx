@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { manrope, zenAntique } from '@/lib/fonts';
 import Sidebar from '@/components/layout/Sidebar';
+import TopNav from '@/components/layout/TopNav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -15,11 +16,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${manrope.variable} ${zenAntique.variable}`}>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 min-w-0">{children}</main>
-        </div>
+      <body className={`${manrope.variable} ${zenAntique.variable} bg-[#030303] text-[#f8f9fa]`}>
+        <TopNav />
+        <Sidebar />
+        <main className="min-h-screen pt-[52px] md:pl-[240px]">{children}</main>
       </body>
     </html>
   );

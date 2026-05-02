@@ -23,7 +23,7 @@ function PandaDemoInner() {
   const controls = usePandaV3Controls();
 
   return (
-    <div className="relative h-screen w-full bg-[#0A0A0F]">
+    <div className="relative h-[calc(100vh-52px)] w-full bg-[#0A0A0F]">
       <PandaV3Scene controls={controls} frameDataRef={frameDataRef} />
 
       {/* Brand badge — top-left */}

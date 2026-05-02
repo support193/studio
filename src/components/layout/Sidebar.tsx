@@ -1,76 +1,78 @@
-// Studio sidebar — pipeline 의 디자인 스타일 (token / gradient / Zen Antique
-// badge font) 그대로 유지하되 auth / role / API call 은 전부 제거.
-// 메뉴 항목은 미션 + 테스트 (확장 예정).
+// Studio sidebar — Figma 10_zeno_studio_ver.1.0.0 의 GNB 구조 포팅.
+//   - 카테고리 그룹: 3d Studio (collapsible)
+//     - Mission
+//     - Test
+//   - 데모용이라 Dashboard / Video 그룹은 생략 (사용자 명시: "미션이랑 테스트만").
 
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Target, FlaskConical } from 'lucide-react';
+import { Box, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
-type SidebarItem = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  isBeta?: boolean;
-};
+type SubItem = { href: string; label: string };
 
-const ITEMS: SidebarItem[] = [
-  { href: '/missions', label: 'Missions', icon: Target },
-  { href: '/test',     label: 'Test',     icon: FlaskConical, isBeta: true },
+const STUDIO_ITEMS: SubItem[] = [
+  { href: '/missions', label: 'Mission' },
+  { href: '/test',     label: 'Test' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [studioOpen, setStudioOpen] = useState(true);
+
+  const studioActive = STUDIO_ITEMS.some((it) => pathname === it.href || pathname.startsWith(it.href + '/'));
 
   return (
-    <aside className="border-border bg-background sticky top-0 left-0 z-40 hidden h-screen w-60 border-r md:block">
-      {/* Brand header */}
-      <div className="border-b border-border-subtle px-5 py-4">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="font-zen-antique text-base text-sidebar-foreground tracking-wide">
-            ZenO Studio
+    <aside className="fixed top-[52px] bottom-0 left-0 z-40 hidden w-[240px] border-r border-[#1a1a1a] bg-[#030303] md:block">
+      <nav className="flex flex-col items-center justify-center gap-[4px] px-[12px] py-[16px]">
+        {/* 3d Studio category header */}
+        <button
+          type="button"
+          onClick={() => setStudioOpen((v) => !v)}
+          className={cn(
+            'flex w-[216px] items-center justify-between rounded-[8px] p-[12px] transition-colors',
+            studioActive ? 'text-[#f8f9fa]' : 'text-[#535357] hover:text-[#f8f9fa]',
+          )}
+        >
+          <span className="flex items-center gap-[10px]">
+            <Box size={20} strokeWidth={1.5} />
+            <span className="font-manrope text-[14px] leading-[1.4]">3d Studio</span>
           </span>
-        </Link>
-      </div>
+          <ChevronUp
+            size={16}
+            strokeWidth={1.5}
+            className={cn('transition-transform duration-200', studioOpen ? '' : 'rotate-180')}
+          />
+        </button>
 
-      <nav className="px-3 py-4">
-        <ul className="flex flex-col gap-1">
-          {ITEMS.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            const Icon = item.icon;
-            return (
-              <li key={item.href}>
+        {/* Sub-items */}
+        {studioOpen && (
+          <>
+            {STUDIO_ITEMS.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
                 <Link
+                  key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-lg p-3 text-sm transition-all duration-200',
-                    isActive
-                      ? 'bg-gradient-sidebar-active text-sidebar-foreground'
-                      : 'text-sidebar-muted-foreground hover:text-sidebar-foreground',
+                    'flex w-[216px] items-center rounded-[8px] p-[12px] transition-colors',
+                    active
+                      ? 'bg-gradient-sidebar-active text-[#f8f9fa]'
+                      : 'text-[#535357] hover:text-[#f8f9fa]',
                   )}
                 >
-                  <span className="flex items-center gap-2.5">
-                    <Icon
-                      size={20}
-                      strokeWidth={1.5}
-                      className={cn(
-                        isActive ? 'text-sidebar-foreground' : 'text-sidebar-muted-foreground',
-                      )}
-                    />
-                    {item.label}
+                  <span className="flex items-center gap-[10px]">
+                    <span className="size-[20px] opacity-0" /> {/* icon spacer */}
+                    <span className="font-manrope text-[14px] leading-[1.4]">{item.label}</span>
                   </span>
-                  {item.isBeta && (
-                    <span className="text-sidebar-foreground bg-gradient-sidebar-badge font-zen-antique rounded-full border border-[#313238] px-1.5 py-1 text-[10px]/[12px]">
-                      Beta
-                    </span>
-                  )}
                 </Link>
-              </li>
-            );
-          })}
-        </ul>
+              );
+            })}
+          </>
+        )}
       </nav>
     </aside>
   );
