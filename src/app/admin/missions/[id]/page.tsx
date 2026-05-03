@@ -13,7 +13,7 @@ export default async function EditMissionPage({
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('missions')
-    .select('id, title, goal, steps, time_limit_s')
+    .select('id, title, goal, steps, time_limit_s, objects, success_conditions, fail_conditions')
     .eq('id', id)
     .single();
   if (error || !data) notFound();
@@ -26,6 +26,9 @@ export default async function EditMissionPage({
         goal: data.goal ?? '',
         steps: data.steps ?? [],
         timeLimitS: data.time_limit_s,
+        objects: data.objects ?? [],
+        successConditions: data.success_conditions ?? [],
+        failConditions: data.fail_conditions ?? [],
       }}
     />
   );
