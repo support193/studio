@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Eye } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   CONDITION_LABELS,
@@ -13,6 +13,7 @@ import {
   type MissionObject,
   type ObjectType,
 } from '@/lib/missions/types';
+import MissionPreview from './MissionPreview';
 
 type Vec3Tuple = [number, number, number];
 
@@ -45,6 +46,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const isEdit = !!initial?.id;
   const objectIds = objects.map((o) => o.id).filter(Boolean);
@@ -212,6 +214,15 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
           Cancel
         </button>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            disabled={objects.length === 0}
+            title={objects.length === 0 ? 'Add at least one object first' : 'Visual preview'}
+            className="flex items-center gap-1.5 rounded-full border border-[#7C5CFC] px-4 py-2 font-manrope text-[13px] text-[#a48dff] hover:bg-[#7C5CFC]/10 disabled:opacity-40"
+          >
+            <Eye size={13} /> Preview
+          </button>
           {isEdit && (
             <button
               type="button" onClick={onDelete} disabled={deleting}
@@ -228,6 +239,10 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
           </button>
         </div>
       </div>
+
+      {showPreview && (
+        <MissionPreview objects={objects} onClose={() => setShowPreview(false)} />
+      )}
     </form>
   );
 }

@@ -26,6 +26,7 @@ import {
   type PandaV3PhysicsHandle,
 } from '@/hooks/useMujocoPhysicsPandaV3';
 import type { PandaV3Controls } from '@/hooks/usePandaV3Controls';
+import type { MissionObject, ObjectState } from '@/lib/missions/types';
 
 // **Make Three.js Z-up.** Must run before any Object3D / Camera is created.
 // Subsequent <Canvas> camera + OrbitControls inherit this up axis.
@@ -47,6 +48,60 @@ function isGripperBody(name: string): boolean {
 }
 
 const OBJ_URLS = PANDA_V3_UNIQUE_OBJS.map((f) => `${PANDA_V3_BASE_URL}/assets/${f}`);
+
+function MissionObjectMeshes({
+  objects,
+  statesRef,
+}: {
+  objects: MissionObject[];
+  statesRef: React.MutableRefObject<ObjectState[]>;
+}) {
+  // R3F group ref by id, updated each frame from MuJoCo state.
+  const groupRefs = useRef<Map<string, THREE.Group>>(new Map());
+
+  useFrame(() => {
+    const states = statesRef.current;
+    for (const s of states) {
+      const g = groupRefs.current.get(s.id);
+      if (!g) continue;
+      g.position.set(s.pos[0], s.pos[1], s.pos[2]);
+      g.quaternion.set(s.quat[1], s.quat[2], s.quat[3], s.quat[0]); // wxyz → xyzw
+    }
+  });
+
+  return (
+    <group>
+      {objects.map((o) => (
+        <group
+          key={o.id}
+          ref={(el) => { if (el) groupRefs.current.set(o.id, el); }}
+          position={[o.initialPos[0], o.initialPos[1], o.initialPos[2]]}
+        >
+          {o.type === 'box' && (
+            <mesh castShadow receiveShadow>
+              <boxGeometry args={[o.size[0] * 2, o.size[1] * 2, o.size[2] * 2]} />
+              <meshStandardMaterial color={o.color} roughness={0.5} metalness={0.1} />
+            </mesh>
+          )}
+          {o.type === 'sphere' && (
+            <mesh castShadow receiveShadow>
+              <sphereGeometry args={[o.size[0], 24, 16]} />
+              <meshStandardMaterial color={o.color} roughness={0.5} metalness={0.1} />
+            </mesh>
+          )}
+          {o.type === 'cylinder' && (
+            // Three CylinderGeometry axis = Y, MuJoCo cylinder axis = Z.
+            // mesh local rotation π/2 around X 으로 Y→Z 정렬.
+            <mesh rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[o.size[0], o.size[0], o.size[1] * 2, 24]} />
+              <meshStandardMaterial color={o.color} roughness={0.5} metalness={0.1} />
+            </mesh>
+          )}
+        </group>
+      ))}
+    </group>
+  );
+}
 
 function PandaMeshes({ bodiesRef }: { bodiesRef: React.MutableRefObject<PandaV3BodyPose[]> }) {
   const objs = useLoader(OBJLoader, OBJ_URLS);
@@ -111,13 +166,15 @@ function SceneContent({
   frameDataRef,
   onPhysHandle,
   promo = false,
+  missionObjects = [],
 }: {
   controls: PandaV3Controls;
   frameDataRef: React.MutableRefObject<PandaV3FrameSnapshot | null>;
   onPhysHandle?: (h: PandaV3PhysicsHandle) => void;
   promo?: boolean;
+  missionObjects?: MissionObject[];
 }) {
-  const phys = useMujocoPhysicsPandaV3(true, controls, frameDataRef);
+  const phys = useMujocoPhysicsPandaV3(true, controls, frameDataRef, missionObjects);
 
   useEffect(() => {
     if (onPhysHandle) onPhysHandle(phys);
@@ -141,6 +198,9 @@ function SceneContent({
         enablePan
       />
       {phys.state.loaded && <PandaMeshes bodiesRef={phys.bodiesRef} />}
+      {phys.state.loaded && missionObjects.length > 0 && (
+        <MissionObjectMeshes objects={missionObjects} statesRef={phys.objectStatesRef} />
+      )}
     </>
   );
 }
@@ -214,12 +274,15 @@ export function PandaV3Scene({
   frameDataRef,
   onPhysHandle,
   promo = false,
+  missionObjects = [],
 }: {
   controls: PandaV3Controls;
   frameDataRef: React.MutableRefObject<PandaV3FrameSnapshot | null>;
   onPhysHandle?: (h: PandaV3PhysicsHandle) => void;
   /** Promo mode: hides the floor + grid for a clean black-bg screenshot. */
   promo?: boolean;
+  /** Mission spec — empty for plain demo, populated for mission player. */
+  missionObjects?: MissionObject[];
 }) {
   return (
     <div className="h-full w-full">
@@ -233,7 +296,13 @@ export function PandaV3Scene({
         gl={{ antialias: true }}
       >
         <Suspense fallback={null}>
-          <SceneContent controls={controls} frameDataRef={frameDataRef} onPhysHandle={onPhysHandle} promo={promo} />
+          <SceneContent
+            controls={controls}
+            frameDataRef={frameDataRef}
+            onPhysHandle={onPhysHandle}
+            promo={promo}
+            missionObjects={missionObjects}
+          />
         </Suspense>
       </Canvas>
     </div>

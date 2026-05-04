@@ -32,6 +32,8 @@ import {
   type DiffIkBuffers,
 } from '@/lib/3d-studio/diff-ik-panda-v3';
 import type { PandaV3Controls } from './usePandaV3Controls';
+import { buildMissionSceneXml, missionBodyName } from '@/lib/missions/mjcf-builder';
+import type { MissionObject, ObjectState } from '@/lib/missions/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -55,6 +57,12 @@ export interface PandaV3PhysicsHandle {
   bodiesRef: React.MutableRefObject<PandaV3BodyPose[]>;
   /** Live IK ok flag — read via ref for HUD polling at lower freq. */
   ikOkRef: React.MutableRefObject<boolean>;
+  /** Live mission object states — updated every RAF tick.  Empty unless
+   *  the hook was given `missionObjects`.  Read via ref by evaluator +
+   *  R3F mesh updater. */
+  objectStatesRef: React.MutableRefObject<ObjectState[]>;
+  /** Reset signal — call to teleport mission objects back to initial pose. */
+  resetMissionObjects: () => void;
 }
 
 /** Snapshot of robot state for trajectory recording.  Lives in a ref so the
@@ -86,7 +94,10 @@ async function fetchAsText(url: string): Promise<string> {
   return r.text();
 }
 
-async function stageAssets(mujoco: any): Promise<string> {
+async function stageAssets(
+  mujoco: any,
+  missionObjects: MissionObject[],
+): Promise<string> {
   for (const dir of ['/models', ROBOT_VFS_DIR, ASSETS_VFS_DIR]) {
     try { mujoco.FS.mkdir(dir); } catch { /* exists */ }
   }
@@ -96,11 +107,21 @@ async function stageAssets(mujoco: any): Promise<string> {
   ]);
   mujoco.FS.writeFile(`${ROBOT_VFS_DIR}/panda.xml`, panda);
   mujoco.FS.writeFile(`${ROBOT_VFS_DIR}/scene.xml`, scene);
+
+  // Mission object body 들을 worldbody 안에 주입한 변형 scene 을 별도 파일로
+  // 저장.  base scene.xml 은 그대로 둬서 일반 데모 (objects 없는) 도 유지.
+  const missionScene = buildMissionSceneXml(scene, missionObjects);
+  mujoco.FS.writeFile(`${ROBOT_VFS_DIR}/mission_scene.xml`, missionScene);
+
   await Promise.all(PANDA_V3_MESH_FILES.map(async (filename) => {
     const buf = await fetchAsArrayBuffer(`${PANDA_V3_BASE_URL}/assets/${filename}`);
     mujoco.FS.writeFile(`${ASSETS_VFS_DIR}/${filename}`, new Uint8Array(buf));
   }));
-  return `${ROBOT_VFS_DIR}/scene.xml`;
+
+  // Mission objects 가 있으면 mission_scene 을, 없으면 base scene 을.
+  return missionObjects.length > 0
+    ? `${ROBOT_VFS_DIR}/mission_scene.xml`
+    : `${ROBOT_VFS_DIR}/scene.xml`;
 }
 
 function readBodies(mujoco: any, model: any, data: any): PandaV3BodyPose[] {
@@ -206,6 +227,7 @@ export function useMujocoPhysicsPandaV3(
   active: boolean,
   controls: PandaV3Controls,
   frameDataRef?: React.MutableRefObject<PandaV3FrameSnapshot | null>,
+  missionObjects: MissionObject[] = [],
 ): PandaV3PhysicsHandle {
   const [state, setState] = useState<PandaV3PhysicsState>({
     loaded: false,
@@ -222,6 +244,20 @@ export function useMujocoPhysicsPandaV3(
   const bodiesRef = useRef<PandaV3BodyPose[]>([]);
   /** Live IK ok flag — same pattern. */
   const ikOkRef = useRef<boolean>(false);
+
+  /** Mission objects state — pos / quat / linVel / angVel each frame.
+   *  Empty unless `missionObjects` was given.  Consumed by evaluator. */
+  const objectStatesRef = useRef<ObjectState[]>([]);
+
+  /** Mission body indices — populated once on model load for fast read. */
+  const missionBodyInfoRef = useRef<Array<{ id: string; bodyIdx: number; jntQposAdr: number; jntDofAdr: number }>>([]);
+
+  /** Reset mission objects flag — flipped by external caller. */
+  const resetMissionFlagRef = useRef<boolean>(false);
+  const resetMissionObjects = () => { resetMissionFlagRef.current = true; };
+
+  /** Snapshot of initial pose so we can teleport back on reset. */
+  const missionInitialRef = useRef<MissionObject[]>(missionObjects);
 
   /** Comfort posture for null-space — first 7 joints of the home keyframe.
    *  Z/C keyboard input drifts q0[6] so the user can spin the wrist
@@ -242,38 +278,37 @@ export function useMujocoPhysicsPandaV3(
         if (cancelled) return;
         mujocoRef.current = mujoco;
 
-        const sceneVfsPath = await stageAssets(mujoco);
+        const sceneVfsPath = await stageAssets(mujoco, missionObjects);
         if (cancelled) return;
+        missionInitialRef.current = missionObjects;
 
         const model = mujoco.MjModel.loadFromXML(sceneVfsPath);
         modelRef.current = model;
         const data = new mujoco.MjData(model);
         dataRef.current = data;
 
-        // **Gravity** — disable globally for now.  Position-PD actuators
-        // alone don't compensate the panda's own weight (long lever arms
-        // at shoulder/elbow), so without compensation the arm sags from
-        // gravity ("축 쳐지는" symptom).
-        //
-        // mjctrl reference enables per-body gravcomp via
-        // `model.body_gravcomp[:] = 1.0`, but zalo's WASM binding may not
-        // expose that as a writable typed array.  Setting opt.gravity = 0
-        // is binding-agnostic and works.  Future TODO: switch to
-        // body_gravcomp when adding free objects to the scene (so cubes
-        // still fall while the arm is held up).
+        // **Gravity** — 두 모드:
+        //  1) missionObjects 없음: 전역 중력 0 (PD actuator 가 panda 자체
+        //     무게를 보상 못 해서 팔이 축 처짐).
+        //  2) missionObjects 있음: 전역 중력 ON + panda body 들에만
+        //     gravcomp = 1 (큐브는 떨어지고, 팔은 안 처짐).
         try {
-          if (model.opt && model.opt.gravity) {
+          const hasMission = missionObjects.length > 0;
+          if (model.opt && model.opt.gravity && !hasMission) {
             model.opt.gravity[0] = 0;
             model.opt.gravity[1] = 0;
             model.opt.gravity[2] = 0;
           }
-          // Belt-and-suspenders: also try body_gravcomp in case it works.
+          // body_gravcomp 가 노출되면 panda body 들에만 gravcomp 적용.
+          // mission body 들은 0 으로 둬서 자유낙하.
           const grav = model.body_gravcomp;
           if (grav && typeof grav.length === 'number') {
             for (let i = 0; i < grav.length; i++) grav[i] = 1.0;
+            // Mission objects 의 body index 는 아래에서 알아낸 후 0 으로 덮음.
+            // 일단 모두 1 로 셋팅.
           }
         } catch (e) {
-          console.warn('[panda-v3] gravity disable failed:', e);
+          console.warn('[panda-v3] gravity setup failed:', e);
         }
 
         const homeKeyId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY.value, 'home');
@@ -288,6 +323,29 @@ export function useMujocoPhysicsPandaV3(
         if (handBodyIdxRef.current < 0) {
           throw new Error('hand body not found in panda model');
         }
+
+        // Mission body 인덱스 + freejoint qpos/dof address 캐싱.  Reset 시
+        // 이 주소로 직접 qpos / qvel 덮어써서 teleport.
+        // jnt_qposadr 는 모델 array — body 에 매달린 freejoint 의 첫 qpos slot.
+        const minfo: Array<{ id: string; bodyIdx: number; jntQposAdr: number; jntDofAdr: number }> = [];
+        for (const o of missionObjects) {
+          const bn = missionBodyName(o.id);
+          const bodyIdx = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, bn);
+          if (bodyIdx < 0) {
+            console.warn(`[panda-v3] mission body not found: ${bn}`);
+            continue;
+          }
+          // body_jntadr[bodyIdx] = first joint index of this body.
+          // jnt_qposadr[jntIdx] = first qpos slot for that joint.
+          const jntIdx = model.body_jntadr ? model.body_jntadr[bodyIdx] : -1;
+          const jntQposAdr = jntIdx >= 0 && model.jnt_qposadr ? model.jnt_qposadr[jntIdx] : -1;
+          const jntDofAdr  = jntIdx >= 0 && model.jnt_dofadr  ? model.jnt_dofadr[jntIdx]  : -1;
+          minfo.push({ id: o.id, bodyIdx, jntQposAdr, jntDofAdr });
+
+          // Mission object 는 body_gravcomp = 0 (자유낙하).
+          if (model.body_gravcomp) model.body_gravcomp[bodyIdx] = 0;
+        }
+        missionBodyInfoRef.current = minfo;
 
         // Seed comfort posture (q0) from current qpos — null-space biases
         // the joint config toward this configuration each tick.
@@ -319,6 +377,29 @@ export function useMujocoPhysicsPandaV3(
             mj.mj_forward(m, d);
             for (let i = 0; i < 7; i++) q0Ref.current[i] = d.qpos[i];
             controls.resetRef.current = false;
+            // 외부에서 controls.reset 호출하면 mission objects 도 같이 reset.
+            resetMissionFlagRef.current = true;
+          }
+
+          // Mission objects teleport back to initial pose.
+          if (resetMissionFlagRef.current) {
+            for (const info of missionBodyInfoRef.current) {
+              if (info.jntQposAdr < 0 || info.jntDofAdr < 0) continue;
+              const orig = missionInitialRef.current.find((o) => o.id === info.id);
+              if (!orig) continue;
+              const qa = info.jntQposAdr;
+              d.qpos[qa + 0] = orig.initialPos[0];
+              d.qpos[qa + 1] = orig.initialPos[1];
+              d.qpos[qa + 2] = orig.initialPos[2];
+              d.qpos[qa + 3] = orig.initialQuat[0];
+              d.qpos[qa + 4] = orig.initialQuat[1];
+              d.qpos[qa + 5] = orig.initialQuat[2];
+              d.qpos[qa + 6] = orig.initialQuat[3];
+              const da = info.jntDofAdr;
+              for (let k = 0; k < 6; k++) d.qvel[da + k] = 0;
+            }
+            mj.mj_forward(m, d);
+            resetMissionFlagRef.current = false;
           }
 
           // 1) Read held-key velocity command.
@@ -359,6 +440,29 @@ export function useMujocoPhysicsPandaV3(
           // up in the diff-IK call (DLS never fails).
           bodiesRef.current = readBodies(mj, m, d);
 
+          // Mission object states — pos / quat / linVel / angVel.
+          // 매 프레임 갱신, evaluator + R3F mesh updater 가 ref 로 읽음.
+          if (missionBodyInfoRef.current.length > 0) {
+            const states: ObjectState[] = [];
+            for (const info of missionBodyInfoRef.current) {
+              const bi = info.bodyIdx;
+              const da = info.jntDofAdr;
+              states.push({
+                id: info.id,
+                pos: [d.xpos[bi * 3], d.xpos[bi * 3 + 1], d.xpos[bi * 3 + 2]],
+                quat: [
+                  d.xquat[bi * 4],     // w
+                  d.xquat[bi * 4 + 1], // x
+                  d.xquat[bi * 4 + 2], // y
+                  d.xquat[bi * 4 + 3], // z
+                ],
+                linVel: da >= 0 ? [d.qvel[da], d.qvel[da + 1], d.qvel[da + 2]] : [0, 0, 0],
+                angVel: da >= 0 ? [d.qvel[da + 3], d.qvel[da + 4], d.qvel[da + 5]] : [0, 0, 0],
+              });
+            }
+            objectStatesRef.current = states;
+          }
+
           rafRef.current = requestAnimationFrame(tick);
         };
         rafRef.current = requestAnimationFrame(tick);
@@ -376,5 +480,5 @@ export function useMujocoPhysicsPandaV3(
     };
   }, [active, controls]);
 
-  return { state, bodiesRef, ikOkRef };
+  return { state, bodiesRef, ikOkRef, objectStatesRef, resetMissionObjects };
 }

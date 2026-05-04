@@ -1,7 +1,7 @@
 // Admin home — mission list + "New mission" CTA.
 
 import Link from 'next/link';
-import { Plus, Clock, ListChecks } from 'lucide-react';
+import { Plus, Clock, ListChecks, Play } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -61,30 +61,39 @@ export default async function AdminHomePage() {
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {missions.map((m) => (
-            <Link
+            <div
               key={m.id}
-              href={`/admin/missions/${m.id}`}
               className="rounded-[16px] border border-[rgba(248,249,250,0.1)] bg-[rgba(248,249,250,0.02)] p-5 transition-colors hover:border-[rgba(248,249,250,0.2)]"
             >
-              <h3 className="font-manrope mb-1 text-[18px] font-semibold text-[#f8f9fa]">
-                {m.title}
-              </h3>
-              {m.goal && (
-                <p className="font-manrope mb-3 line-clamp-2 text-[13px] text-[#939399]">
-                  {m.goal}
-                </p>
-              )}
-              <div className="flex items-center gap-4 text-[11px] text-[#737780]">
-                <span className="flex items-center gap-1">
-                  <ListChecks size={12} strokeWidth={1.75} />
-                  {(m.steps?.length ?? 0)} steps
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock size={12} strokeWidth={1.75} />
-                  {m.time_limit_s}s
-                </span>
+              <Link href={`/admin/missions/${m.id}`} className="block">
+                <h3 className="font-manrope mb-1 text-[18px] font-semibold text-[#f8f9fa]">
+                  {m.title}
+                </h3>
+                {m.goal && (
+                  <p className="font-manrope mb-3 line-clamp-2 text-[13px] text-[#939399]">
+                    {m.goal}
+                  </p>
+                )}
+              </Link>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 text-[11px] text-[#737780]">
+                  <span className="flex items-center gap-1">
+                    <ListChecks size={12} strokeWidth={1.75} />
+                    {(m.steps?.length ?? 0)} steps
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} strokeWidth={1.75} />
+                    {m.time_limit_s}s
+                  </span>
+                </div>
+                <Link
+                  href={`/missions/${m.id}/play`}
+                  className="flex items-center gap-1 rounded-full bg-[#7C5CFC]/20 px-3 py-1 font-manrope text-[11px] font-medium text-[#a48dff] hover:bg-[#7C5CFC]/30"
+                >
+                  <Play size={11} strokeWidth={2} /> Play
+                </Link>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
