@@ -9,11 +9,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, Move3d, RotateCcw, Play as PlayIcon, Pencil, Plus, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { X, Move3d, RotateCcw, Play as PlayIcon, Pencil, Plus, Eye, EyeOff, Trash2, Sparkles } from 'lucide-react';
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
 import { usePandaV3Controls } from '@/hooks/usePandaV3Controls';
 import type { PandaV3FrameSnapshot } from '@/hooks/useMujocoPhysicsPandaV3';
 import { defaultObject, type Condition, type MissionObject, type ObjectType } from '@/lib/missions/types';
+import { describeCondition, shortLabel, conditionColor } from '@/lib/missions/describe';
 import MissionEditScene from './MissionEditScene';
 
 type Mode = 'edit' | 'play';
@@ -36,6 +37,7 @@ export default function MissionEditor({
   const [gizmoMode, setGizmoMode] = useState<GizmoMode>('translate');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showConditions, setShowConditions] = useState(true);
+  const [showGhosts, setShowGhosts] = useState(true);
 
   const controls = usePandaV3Controls();
   const frameDataRef = useRef<PandaV3FrameSnapshot | null>(null);
@@ -111,6 +113,16 @@ export default function MissionEditor({
                 {showConditions ? <Eye size={12} /> : <EyeOff size={12} />}
                 Conditions
               </button>
+              <button
+                type="button"
+                onClick={() => setShowGhosts((v) => !v)}
+                title={showGhosts ? 'Hide goal ghosts' : 'Show goal ghosts (성공 시점 객체 위치)'}
+                className={`flex items-center gap-1.5 rounded-full border border-[#1f1f1f] bg-black/40 px-3 py-1 font-manrope text-[12px] backdrop-blur ${
+                  showGhosts ? 'text-[#FACC15] hover:text-yellow-300' : 'text-[#737780] hover:text-white'
+                }`}
+              >
+                <Sparkles size={12} /> Goal
+              </button>
             </>
           )}
         </div>
@@ -139,6 +151,7 @@ export default function MissionEditor({
             successConditions={successConditions}
             failConditions={failConditions}
             showConditions={showConditions}
+            showGhosts={showGhosts}
           />
         ) : (
           <PandaV3Scene
@@ -159,6 +172,14 @@ export default function MissionEditor({
               setObjects(objects.filter((o) => o.id !== selected.id));
               setSelectedId(null);
             }}
+          />
+        )}
+
+        {/* Bottom-right: condition 자연어 카드 (Edit 모드) */}
+        {mode === 'edit' && (successConditions.length > 0 || failConditions.length > 0) && (
+          <ConditionCards
+            successConditions={successConditions}
+            failConditions={failConditions}
           />
         )}
 
@@ -287,6 +308,57 @@ function GizmoToggle({
       >
         <RotateCcw size={12} /> Rotate
       </button>
+    </div>
+  );
+}
+
+function ConditionCards({
+  successConditions, failConditions,
+}: {
+  successConditions: Condition[];
+  failConditions: Condition[];
+}) {
+  return (
+    <div className="absolute bottom-3 right-3 z-10 max-h-[280px] w-[300px] overflow-auto rounded-[10px] border border-[#1f1f1f] bg-black/60 p-3 backdrop-blur">
+      <div className="mb-2 font-manrope text-[11px] font-semibold uppercase tracking-wider text-[#737780]">
+        Conditions
+      </div>
+      {successConditions.length > 0 && (
+        <div className="mb-2">
+          <div className="mb-1 font-manrope text-[10px] uppercase text-[#22c55e]">Success (모두)</div>
+          {successConditions.map((c, i) => (
+            <ConditionCard key={`s-${i}`} cond={c} role="success" />
+          ))}
+        </div>
+      )}
+      {failConditions.length > 0 && (
+        <div>
+          <div className="mb-1 font-manrope text-[10px] uppercase text-[#ef4444]">Fail (하나라도)</div>
+          {failConditions.map((c, i) => (
+            <ConditionCard key={`f-${i}`} cond={c} role="fail" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConditionCard({ cond, role }: { cond: Condition; role: 'success' | 'fail' }) {
+  const color = conditionColor(role);
+  return (
+    <div
+      className="mb-1.5 flex items-start gap-2 rounded-[6px] border px-2 py-1.5"
+      style={{ borderColor: `${color}40`, backgroundColor: `${color}15` }}
+    >
+      <span
+        className="mt-[1px] rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase"
+        style={{ color, backgroundColor: `${color}25` }}
+      >
+        {shortLabel(cond)}
+      </span>
+      <span className="font-manrope text-[11px] leading-tight text-[#d8d8de]">
+        {describeCondition(cond)}
+      </span>
     </div>
   );
 }

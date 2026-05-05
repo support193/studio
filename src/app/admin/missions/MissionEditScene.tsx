@@ -19,6 +19,7 @@ import * as THREE from 'three';
 import type { TransformControls as TC } from 'three-stdlib';
 import type { Condition, MissionObject } from '@/lib/missions/types';
 import ConditionVisuals from './ConditionVisuals';
+import GoalGhosts from './GoalGhosts';
 
 type GizmoMode = 'translate' | 'rotate';
 
@@ -31,6 +32,7 @@ export interface MissionEditSceneProps {
   successConditions: Condition[];
   failConditions: Condition[];
   showConditions: boolean;
+  showGhosts: boolean;
 }
 
 export default function MissionEditScene(props: MissionEditSceneProps) {
@@ -50,7 +52,7 @@ export default function MissionEditScene(props: MissionEditSceneProps) {
 
 function SceneContent({
   objects, setObjects, selectedId, setSelectedId, gizmoMode,
-  successConditions, failConditions, showConditions,
+  successConditions, failConditions, showConditions, showGhosts,
 }: MissionEditSceneProps) {
   return (
     <>
@@ -80,6 +82,7 @@ function SceneContent({
         successConditions={successConditions}
         failConditions={failConditions}
         showConditions={showConditions}
+        showGhosts={showGhosts}
       />
 
       {showConditions && (
@@ -88,6 +91,10 @@ function SceneContent({
           successConditions={successConditions}
           failConditions={failConditions}
         />
+      )}
+
+      {showGhosts && (
+        <GoalGhosts objects={objects} successConditions={successConditions} />
       )}
 
       <OrbitControls

@@ -21,6 +21,7 @@ import type {
   PandaV3PhysicsHandle,
 } from '@/hooks/useMujocoPhysicsPandaV3';
 import { evaluateMission } from '@/lib/missions/evaluator';
+import { describeCondition, shortLabel } from '@/lib/missions/describe';
 import type {
   EvalResult,
   GripperState,
@@ -116,6 +117,42 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
           Conditions: <span className="text-[#7C5CFC]">{satisfied}</span>/{total}
         </span>
       </div>
+
+      {/* Right side: 자연어 condition 진행 카드 — 무엇이 만족됐는지 한눈에 */}
+      {(mission.successConditions.length > 0 || mission.failConditions.length > 0) && (
+        <div className="absolute right-4 top-20 z-10 max-h-[calc(100vh-220px)] w-[300px] overflow-auto rounded-[10px] border border-[#1f1f1f] bg-black/40 p-3 backdrop-blur">
+          {mission.successConditions.length > 0 && (
+            <div className="mb-2">
+              <div className="mb-1 font-manrope text-[10px] uppercase text-[#22c55e]">Success (모두)</div>
+              {mission.successConditions.map((c, i) => (
+                <div key={`s-${i}`} className="mb-1.5 flex items-start gap-2 rounded-[6px] border border-[#22c55e]/30 bg-[#22c55e]/10 px-2 py-1.5">
+                  <span className="mt-[1px] rounded bg-[#22c55e]/25 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase text-[#22c55e]">
+                    {shortLabel(c)}
+                  </span>
+                  <span className="font-manrope text-[11px] leading-tight text-[#d8d8de]">
+                    {describeCondition(c)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {mission.failConditions.length > 0 && (
+            <div>
+              <div className="mb-1 font-manrope text-[10px] uppercase text-[#ef4444]">Fail (하나라도)</div>
+              {mission.failConditions.map((c, i) => (
+                <div key={`f-${i}`} className="mb-1.5 flex items-start gap-2 rounded-[6px] border border-[#ef4444]/30 bg-[#ef4444]/10 px-2 py-1.5">
+                  <span className="mt-[1px] rounded bg-[#ef4444]/25 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase text-[#ef4444]">
+                    {shortLabel(c)}
+                  </span>
+                  <span className="font-manrope text-[11px] leading-tight text-[#d8d8de]">
+                    {describeCondition(c)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bottom: keyboard hint */}
       <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-[10px] border border-[#1f1f1f] bg-black/40 px-4 py-2 backdrop-blur">
