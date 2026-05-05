@@ -13,7 +13,7 @@ import {
   type MissionObject,
   type ObjectType,
 } from '@/lib/missions/types';
-import MissionPreview from './MissionPreview';
+import MissionEditor from './MissionEditor';
 
 type Vec3Tuple = [number, number, number];
 
@@ -218,10 +218,10 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
             type="button"
             onClick={() => setShowPreview(true)}
             disabled={objects.length === 0}
-            title={objects.length === 0 ? 'Add at least one object first' : 'Visual preview'}
+            title={objects.length === 0 ? 'Add at least one object first' : '3D editor — drag to place, toggle Edit/Play'}
             className="flex items-center gap-1.5 rounded-full border border-[#7C5CFC] px-4 py-2 font-manrope text-[13px] text-[#a48dff] hover:bg-[#7C5CFC]/10 disabled:opacity-40"
           >
-            <Eye size={13} /> Preview
+            <Eye size={13} /> 3D Editor
           </button>
           {isEdit && (
             <button
@@ -241,7 +241,11 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
       </div>
 
       {showPreview && (
-        <MissionPreview objects={objects} onClose={() => setShowPreview(false)} />
+        <MissionEditor
+          objects={objects}
+          setObjects={setObjects}
+          onClose={() => setShowPreview(false)}
+        />
       )}
     </form>
   );
