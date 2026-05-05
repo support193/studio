@@ -166,6 +166,79 @@ POC 는 Phase 6 + 7 만으로 시작:
 
 ---
 
+## 7.5. 추가 사례 (2차 조사)
+
+### 로봇 학습 task 에디터
+| | 패턴 | 차용 포인트 |
+|---|---|---|
+| **NVIDIA Isaac Lab** (isaac-sim.github.io/IsaacLab) | RL framework, task = `RewardTermCfg` / `TerminationTermCfg` 데이터클래스 조합 | term-based reward composition — 우리도 condition 마다 weight 줘서 합성 가능 (mid-term) |
+| **ManiSkill3** (maniskill.ai) | `_load_scene` / `_initialize_episode` / `evaluate()` 세 단계 분리 | 우리 schema 도 같음 (objects = scene, initialPos = init, conditions = eval). 검증 ✓ |
+| **BEHAVIOR-1K / OmniGibson** (behavior.stanford.edu) | **BDDL** (PDDL-derived) — `(inside apple fridge)` 같은 symbolic 술어 | mid/long-term: 비코더가 `inside(cup, drawer)` 타입 입력하게 — predicate 라이브러리 상위 추상화 |
+| **Habitat-Sim + RearrangeEpisodeGenerator** | episode = scene + start state + goal state, JSON 직렬화 | 우리 schema 와 일치. JSON dump/load 패턴 검증 ✓ |
+
+### 브라우저 3D 에디터
+| | 패턴 | 차용 |
+|---|---|---|
+| **three.js editor** (threejs.org/editor) | left tree / center viewport / right inspector — 3-pane | 우리 layout 의 표준. localStorage autosave 도 차용 가능 |
+| **PlayCanvas Editor** | ECS — entity 에 component attach (script / physics / trigger) | "객체에 SuccessCondition component 붙이기" 추상화 — 미션 component 모델 |
+| **Spline** (spline.design) | **Events 탭** — 트리거 (click / collide / look-at) → 액션 시각 바인딩 | **이게 Phase 8 의 best UX 레퍼런스.** "조건 → 시각화" 흐름 그대로 모방 가능 |
+| **A-Frame Inspector** (Ctrl+Alt+I) | DOM attribute hot-reload, physics state 유지 | 편집 중 physics 안 끊는 패턴 |
+
+### 게임엔진 트리거 / 목표 에디터
+| | 패턴 | 차용 |
+|---|---|---|
+| **Unreal Blueprint + TriggerBox** | TriggerBox = first-class scene actor, color-coded (success=green, fail=red) | **condition region 색상 컨벤션 즉시 적용**: position-success=초록, fail=빨강, checkpoint=파랑 |
+| **Unity Quest Machine / Game Creator 2** | node-graph mission — sequential / parallel / branching | mid-term: 복합 미션 (step 1 → step 2 → 분기) |
+| **Godot Area3D + signals** | `body_entered` signal, inspector 에서 signal/slot wiring | `onObjectInZone` callback 모델 (우리 evaluator 와 일치) |
+| **Roblox Studio** `Touched` event | 초보자용 "if X touches Y" 템플릿 | UX 단순화 — "Add condition" 버튼 누르면 자연어 템플릿 (e.g. "When X enters Y") |
+
+### 제약 / 목표 시각화 (가장 중요)
+| | 패턴 | 차용 |
+|---|---|---|
+| **ManiSkill goal sites** | **MuJoCo `<site>` element** — 투명 sphere / box, success = `dist(tcp_site, goal_site) < threshold` | 🌟 **MuJoCo 가 이미 site 지원.**  React 에서 wireframe mesh 직접 그리는 대신 mission XML 에 `<site>` 추가 → MuJoCo 가 알아서 렌더 + collision-aware. **Phase 8 단순화** |
+| **Isaac Lab reward viz** | rerun.io 또는 omni.debug.draw 로 reward heatmap | 우리는 단순 satisfied/total 표시면 충분. 향후 고급 미션에서 차용 |
+| **OpenTeach / AnyTeleop** (open-teach.github.io) | VR teleop, target EE pose 를 **ghost gripper** 로 표시 | **Phase 8/11 추가**: "show goal state" 토글 — 성공 시점의 객체 위치를 반투명으로 미리보기 |
+| **RoboHive / FrankaKitchen** | dual-render — 현재 scene + goal scene 동시 (반투명 오버레이) | mid-term — 사용자가 "도달해야 할 상태" 를 직관적으로 봄 |
+
+### 브라우저 physics + 에디터
+| | 패턴 | 차용 |
+|---|---|---|
+| **Triplex + react-three/rapier** | `editor.config.ts` 로 custom inspector 확장점 | 우리도 비슷한 extension point 만들면 추후 condition 종류 추가 쉬움 |
+| **Needle Engine** (needle.tools) | Unity export → web, glTF extras 에 component 직렬화 | mid-term: glTF 로 mission scene 익스포트해서 외부 도구와 호환 |
+| **Theatre.js** (theatrejs.com) | timeline / keyframe — episode replay | 추후 "성공 시점까지 길이" 시각화 |
+| **r3f-editor** (isaac-mason) | running r3f scene 위에 HUD overlay, in-place 편집 | physics 안 끊고 편집하는 ref |
+
+---
+
+## 7.6. 추가 차용 결정 (반영)
+
+기존 계획서의 7번 섹션 위주로 다음 변경:
+
+1. **Condition region 시각화 = MuJoCo `<site>`** (ManiSkill 패턴)
+   - React 에서 wireframe mesh 직접 그리는 대신 `mjcf-builder.ts` 에서 condition 별 `<site>` element 생성
+   - rgba 색상 컨벤션 (Unreal 차용): success-region 초록 `0 0.8 0 0.3`, fail-region 빨강 `0.9 0.1 0.1 0.3`, checkpoint 파랑 `0.2 0.4 1 0.3`
+   - MuJoCo native 렌더 → 우리 코드 더 단순함
+   - 단, 우리 R3F 가 MuJoCo XML 의 `<site>` 직접 안 그림 (mesh 만 추출). React 측에서도 site 좌표/크기 별도 mirror mesh 그려야. ManiSkill 은 MuJoCo Python viewer 사용 → site 자동 표시. 우리는 어차피 R3F 라 wireframe mesh 가 더 단순할 수도 있음. **Phase 8 시작할 때 재평가**.
+
+2. **Spline Events tab UX 모방**
+   - "Add condition" → 작은 카드 (이름 + 타입 드롭다운 + 인자) → 카드 클릭 시 3D 에서 region 하이라이트
+   - 카드 = 사이드 패널, region = 3D — 클릭으로 양방향 동기화
+
+3. **BDDL-스타일 자연어 템플릿** (Phase 11+)
+   - "When X enters region Y" / "When X is held by gripper" 같은 문장으로 condition 추가
+   - 술어 라이브러리는 우리가 정의 (mid-term)
+
+4. **Ghost goal preview** (Phase 11+)
+   - "Show goal state" 토글 → 성공 condition 만족 시점의 객체 위치를 반투명으로 그림
+   - position-region condition 의 center 가 그 객체의 goal pos
+
+5. **3-pane layout** (three.js editor 차용)
+   - left: object/condition 트리 (이미 사이드 패널 탭 구조 있음 — 그대로 활용)
+   - center: 3D 뷰포트
+   - right: 선택된 객체/condition 의 상세 inspector (현재는 사이드 패널 안에 inline. POC 후 분리 검토)
+
+---
+
 ## 8. 다음 액션
 
 이 문서는 **계획서**. 진행은 별도 task 로:
