@@ -8,12 +8,12 @@
 
 'use client';
 
-import { useRef, useState } from 'react';
-import { X, Move3d, RotateCcw, Play as PlayIcon, Pencil } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Move3d, RotateCcw, Play as PlayIcon, Pencil, Plus, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
 import { usePandaV3Controls } from '@/hooks/usePandaV3Controls';
 import type { PandaV3FrameSnapshot } from '@/hooks/useMujocoPhysicsPandaV3';
-import type { MissionObject } from '@/lib/missions/types';
+import { defaultObject, type Condition, type MissionObject, type ObjectType } from '@/lib/missions/types';
 import MissionEditScene from './MissionEditScene';
 
 type Mode = 'edit' | 'play';
@@ -22,20 +22,69 @@ type GizmoMode = 'translate' | 'rotate';
 export default function MissionEditor({
   objects,
   setObjects,
+  successConditions = [],
+  failConditions = [],
   onClose,
 }: {
   objects: MissionObject[];
   setObjects: (next: MissionObject[]) => void;
+  successConditions?: Condition[];
+  failConditions?: Condition[];
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<Mode>('edit');
   const [gizmoMode, setGizmoMode] = useState<GizmoMode>('translate');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showConditions, setShowConditions] = useState(true);
 
   const controls = usePandaV3Controls();
   const frameDataRef = useRef<PandaV3FrameSnapshot | null>(null);
 
   const selected = objects.find((o) => o.id === selectedId) ?? null;
+
+  // 단축키: T (translate), R (rotate), Esc (deselect), Delete (remove selected),
+  //         W (close).  Edit 모드에서만 동작.
+  useEffect(() => {
+    if (mode !== 'edit') return;
+    const handler = (e: KeyboardEvent) => {
+      // input 안에서 타이핑 중이면 무시.
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === 'Escape') { setSelectedId(null); return; }
+      if (e.key === 't' || e.key === 'T') { setGizmoMode('translate'); return; }
+      if (e.key === 'r' || e.key === 'R') { setGizmoMode('rotate'); return; }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        setObjects(objects.filter((o) => o.id !== selectedId));
+        setSelectedId(null);
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [mode, selectedId, objects, setObjects]);
+
+  // Add object — 새 id 자동 생성 (obj_1, obj_2, ...) + 즉시 선택.
+  const addObject = (type: ObjectType) => {
+    const existingNs = objects
+      .map((o) => o.id.match(/^obj_(\d+)$/)?.[1])
+      .filter((s): s is string => !!s)
+      .map((s) => parseInt(s, 10));
+    const nextN = (existingNs.length === 0 ? 0 : Math.max(...existingNs)) + 1;
+    const id = `obj_${nextN}`;
+    const base = defaultObject(id);
+    const o: MissionObject = {
+      ...base,
+      type,
+      // type 별로 합리적인 default size.
+      size: type === 'box' ? [0.025, 0.025, 0.025]
+          : type === 'sphere' ? [0.025, 0, 0]
+          : [0.02, 0.04, 0],
+    };
+    setObjects([...objects, o]);
+    setSelectedId(id);
+  };
 
   return (
     <div
@@ -50,7 +99,19 @@ export default function MissionEditor({
         <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
           <ModeToggle mode={mode} setMode={setMode} />
           {mode === 'edit' && (
-            <GizmoToggle gizmoMode={gizmoMode} setGizmoMode={setGizmoMode} disabled={!selectedId} />
+            <>
+              <GizmoToggle gizmoMode={gizmoMode} setGizmoMode={setGizmoMode} disabled={!selectedId} />
+              <AddObjectMenu onAdd={addObject} />
+              <button
+                type="button"
+                onClick={() => setShowConditions((v) => !v)}
+                title={showConditions ? 'Hide conditions' : 'Show conditions'}
+                className="flex items-center gap-1.5 rounded-full border border-[#1f1f1f] bg-black/40 px-3 py-1 font-manrope text-[12px] text-[#737780] backdrop-blur hover:text-white"
+              >
+                {showConditions ? <Eye size={12} /> : <EyeOff size={12} />}
+                Conditions
+              </button>
+            </>
           )}
         </div>
         <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
@@ -75,6 +136,9 @@ export default function MissionEditor({
             selectedId={selectedId}
             setSelectedId={setSelectedId}
             gizmoMode={gizmoMode}
+            successConditions={successConditions}
+            failConditions={failConditions}
+            showConditions={showConditions}
           />
         ) : (
           <PandaV3Scene
@@ -91,6 +155,10 @@ export default function MissionEditor({
             onUpdate={(patch) => {
               setObjects(objects.map((o) => (o.id === selected.id ? { ...o, ...patch } : o)));
             }}
+            onDelete={() => {
+              setObjects(objects.filter((o) => o.id !== selected.id));
+              setSelectedId(null);
+            }}
           />
         )}
 
@@ -98,9 +166,10 @@ export default function MissionEditor({
         <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-[10px] border border-[#1f1f1f] bg-black/40 px-4 py-2 backdrop-blur">
           {mode === 'edit' ? (
             <div className="font-manrope text-[11px] text-[#737780]">
-              <span className="text-[#a48dff]">클릭</span>으로 객체 선택 ·
-              <span className="ml-2 text-[#a48dff]">드래그</span>로 이동 / 회전 ·
-              <span className="ml-2 text-[#a48dff]">바깥 클릭</span>으로 선택 해제
+              <kbd className="kbd">T</kbd> Move ·
+              <kbd className="kbd ml-1">R</kbd> Rotate ·
+              <kbd className="kbd ml-1">Esc</kbd> Deselect ·
+              <kbd className="kbd ml-1">Del</kbd> Remove · 클릭/드래그
             </div>
           ) : (
             <div className="font-manrope text-[11px] text-[#737780]">
@@ -154,6 +223,35 @@ function ModeToggle({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void 
   );
 }
 
+function AddObjectMenu({ onAdd }: { onAdd: (type: ObjectType) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 rounded-full border border-[#1f1f1f] bg-black/40 px-3 py-1 font-manrope text-[12px] text-[#737780] backdrop-blur hover:text-white"
+      >
+        <Plus size={12} /> Add
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 flex flex-col rounded-[8px] border border-[#1f1f1f] bg-[#0A0A0F] shadow-lg">
+          {(['box', 'sphere', 'cylinder'] as ObjectType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => { onAdd(t); setOpen(false); }}
+              className="px-3 py-1.5 text-left font-manrope text-[12px] text-[#a8a8b0] hover:bg-[rgba(248,249,250,0.05)] hover:text-white"
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GizmoToggle({
   gizmoMode, setGizmoMode, disabled,
 }: {
@@ -194,10 +292,11 @@ function GizmoToggle({
 }
 
 function SelectedInspector({
-  obj, onUpdate,
+  obj, onUpdate, onDelete,
 }: {
   obj: MissionObject;
   onUpdate: (patch: Partial<MissionObject>) => void;
+  onDelete: () => void;
 }) {
   return (
     <div className="absolute bottom-3 left-3 z-10 w-[280px] rounded-[10px] border border-[#1f1f1f] bg-black/60 p-3 backdrop-blur">
@@ -205,7 +304,14 @@ function SelectedInspector({
         <span className="font-manrope text-[11px] font-semibold uppercase tracking-wider text-[#737780]">
           {obj.type} · {obj.id || 'unnamed'}
         </span>
-        <span className="font-mono text-[10px] text-[#737780]">selected</span>
+        <button
+          type="button"
+          onClick={onDelete}
+          title="Remove (Del)"
+          className="flex size-[20px] items-center justify-center rounded text-[#737780] hover:bg-red-900/30 hover:text-red-400"
+        >
+          <Trash2 size={12} />
+        </button>
       </div>
       <div className="grid grid-cols-3 gap-1.5">
         {(['x', 'y', 'z'] as const).map((axis, i) => (

@@ -17,7 +17,8 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { Grid, OrbitControls, TransformControls, Outlines } from '@react-three/drei';
 import * as THREE from 'three';
 import type { TransformControls as TC } from 'three-stdlib';
-import type { MissionObject } from '@/lib/missions/types';
+import type { Condition, MissionObject } from '@/lib/missions/types';
+import ConditionVisuals from './ConditionVisuals';
 
 type GizmoMode = 'translate' | 'rotate';
 
@@ -27,6 +28,9 @@ export interface MissionEditSceneProps {
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
   gizmoMode: GizmoMode;
+  successConditions: Condition[];
+  failConditions: Condition[];
+  showConditions: boolean;
 }
 
 export default function MissionEditScene(props: MissionEditSceneProps) {
@@ -46,6 +50,7 @@ export default function MissionEditScene(props: MissionEditSceneProps) {
 
 function SceneContent({
   objects, setObjects, selectedId, setSelectedId, gizmoMode,
+  successConditions, failConditions, showConditions,
 }: MissionEditSceneProps) {
   return (
     <>
@@ -72,7 +77,18 @@ function SceneContent({
         selectedId={selectedId}
         setSelectedId={setSelectedId}
         gizmoMode={gizmoMode}
+        successConditions={successConditions}
+        failConditions={failConditions}
+        showConditions={showConditions}
       />
+
+      {showConditions && (
+        <ConditionVisuals
+          objects={objects}
+          successConditions={successConditions}
+          failConditions={failConditions}
+        />
+      )}
 
       <OrbitControls
         makeDefault

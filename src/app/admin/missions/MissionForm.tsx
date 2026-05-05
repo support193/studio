@@ -244,6 +244,8 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
         <MissionEditor
           objects={objects}
           setObjects={setObjects}
+          successConditions={successConds}
+          failConditions={failConds}
           onClose={() => setShowPreview(false)}
         />
       )}
