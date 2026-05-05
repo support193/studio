@@ -12,7 +12,7 @@
 
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Grid, OrbitControls, TransformControls, Outlines } from '@react-three/drei';
 import * as THREE from 'three';
@@ -106,6 +106,24 @@ function EditableObjects({
   const tcRef = useRef<TC | null>(null);
   const { controls } = useThree() as unknown as { controls: { enabled: boolean } | null };
 
+  // Add object → 즉시 selection 셋팅 시, 새 group 의 ref 가 commit 시점에야
+  // 박힘.  TransformControls 의 `groupRefs.current.get(selectedId)` 는 render
+  // 시점 평가라 첫 render 에선 undefined → TransformControls 미마운트.  Re-render
+  // 트리거가 안 걸리면 영구 미마운트.  refReady 카운터를 ref callback 에서 bump
+  // 해서 강제 re-render → 다음 render 에서 ref hit.
+  const [, setRefReady] = useState(0);
+  const setGroupRef = useCallback((id: string, el: THREE.Group | null) => {
+    if (el) {
+      if (groupRefs.current.get(id) !== el) {
+        groupRefs.current.set(id, el);
+        setRefReady((v) => v + 1);
+      }
+    } else if (groupRefs.current.has(id)) {
+      groupRefs.current.delete(id);
+      setRefReady((v) => v + 1);
+    }
+  }, []);
+
   const onTransformChange = useCallback((id: string) => {
     const g = groupRefs.current.get(id);
     if (!g) return;
@@ -147,7 +165,7 @@ function EditableObjects({
           obj={o}
           selected={o.id === selectedId}
           onClick={() => setSelectedId(o.id)}
-          groupRefs={groupRefs}
+          setGroupRef={setGroupRef}
         />
       ))}
       {selectedId && groupRefs.current.get(selectedId) && (
@@ -165,16 +183,16 @@ function EditableObjects({
 }
 
 function ObjectMesh({
-  obj, selected, onClick, groupRefs,
+  obj, selected, onClick, setGroupRef,
 }: {
   obj: MissionObject;
   selected: boolean;
   onClick: () => void;
-  groupRefs: React.MutableRefObject<Map<string, THREE.Group>>;
+  setGroupRef: (id: string, el: THREE.Group | null) => void;
 }) {
   return (
     <group
-      ref={(el) => { if (el) groupRefs.current.set(obj.id, el); }}
+      ref={(el) => setGroupRef(obj.id, el)}
       position={[obj.initialPos[0], obj.initialPos[1], obj.initialPos[2]]}
       quaternion={[obj.initialQuat[1], obj.initialQuat[2], obj.initialQuat[3], obj.initialQuat[0]]}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
