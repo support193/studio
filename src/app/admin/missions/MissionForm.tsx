@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import {
   CONDITION_LABELS,
   CONDITION_TYPES,
+  clampToFloor,
   defaultCondition,
   defaultObject,
   type Condition,
@@ -322,7 +323,8 @@ function ObjectsTab({ objects, setObjects }: { objects: MissionObject[]; setObje
     setObjects([...objects, defaultObject(id)]);
   }
   function patch(idx: number, p: Partial<MissionObject>) {
-    setObjects(objects.map((o, i) => (i === idx ? { ...o, ...p } : o)));
+    // 모든 patch (size 변경 포함) 후 z 가 floor 아래면 자동으로 끌어올림.
+    setObjects(objects.map((o, i) => (i === idx ? clampToFloor({ ...o, ...p }) : o)));
   }
   function remove(idx: number) {
     setObjects(objects.filter((_, i) => i !== idx));

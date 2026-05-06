@@ -210,8 +210,10 @@ function SceneContent({
 export function ZUpFloor() {
   return (
     <>
-      {/* XY plane at z=0 (no rotation) */}
-      <mesh position={[0, 0, 0]} receiveShadow>
+      {/* XY plane at z=0 (no rotation).  Render mesh 1mm below z=0 to avoid
+          z-fighting with object bottoms that rest exactly on z=0.  Physics
+          floor (MJCF) is still at z=0; the offset is render-only. */}
+      <mesh position={[0, 0, -0.001]} receiveShadow>
         <planeGeometry args={[2, 2]} />
         <meshStandardMaterial color="#2a2a35" metalness={0.3} roughness={0.7} />
       </mesh>

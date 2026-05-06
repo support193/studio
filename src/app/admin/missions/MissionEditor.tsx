@@ -13,7 +13,7 @@ import { X, Move3d, RotateCcw, Play as PlayIcon, Pencil, Plus, Eye, EyeOff, Tras
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
 import { usePandaV3Controls } from '@/hooks/usePandaV3Controls';
 import type { PandaV3FrameSnapshot } from '@/hooks/useMujocoPhysicsPandaV3';
-import { defaultObject, type Condition, type MissionObject, type ObjectType } from '@/lib/missions/types';
+import { clampToFloor, defaultObject, type Condition, type MissionObject, type ObjectType } from '@/lib/missions/types';
 import { describeCondition, shortLabel, conditionColor } from '@/lib/missions/describe';
 import MissionEditScene from './MissionEditScene';
 
@@ -76,14 +76,15 @@ export default function MissionEditor({
     const nextN = (existingNs.length === 0 ? 0 : Math.max(...existingNs)) + 1;
     const id = `obj_${nextN}`;
     const base = defaultObject(id);
-    const o: MissionObject = {
+    // type 별 합리적인 default size + 그 size 에 맞춰 z 도 자동 안착시킴
+    // (clampToFloor 가 cylinder 처럼 큰 half-height 가지면 z 를 끌어올려줌).
+    const o: MissionObject = clampToFloor({
       ...base,
       type,
-      // type 별로 합리적인 default size.
       size: type === 'box' ? [0.025, 0.025, 0.025]
           : type === 'sphere' ? [0.025, 0, 0]
           : [0.02, 0.04, 0],
-    };
+    });
     setObjects([...objects, o]);
     setSelectedId(id);
   };
@@ -166,7 +167,9 @@ export default function MissionEditor({
           <SelectedInspector
             obj={selected}
             onUpdate={(patch) => {
-              setObjects(objects.map((o) => (o.id === selected.id ? { ...o, ...patch } : o)));
+              setObjects(objects.map((o) => (
+                o.id === selected.id ? clampToFloor({ ...o, ...patch }) : o
+              )));
             }}
             onDelete={() => {
               setObjects(objects.filter((o) => o.id !== selected.id));

@@ -17,7 +17,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { Environment, OrbitControls, TransformControls, Outlines } from '@react-three/drei';
 import * as THREE from 'three';
 import type { TransformControls as TC } from 'three-stdlib';
-import type { Condition, MissionObject } from '@/lib/missions/types';
+import { bottomOffset, clampToFloor, type Condition, type MissionObject } from '@/lib/missions/types';
 import { ZUpFloor, ZUpLights } from '@/components/3d-studio/PandaV3Scene';
 import ConditionVisuals from './ConditionVisuals';
 import GoalGhosts from './GoalGhosts';
@@ -122,15 +122,21 @@ function EditableObjects({
   const onTransformChange = useCallback((id: string) => {
     const g = groupRefs.current.get(id);
     if (!g) return;
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    // 즉시 시각 clamp — 사용자가 floor 아래로 드래그해도 mesh 가 따라 내려가지
+    // 않게 mesh.position.z 를 곧바로 끌어올림.
+    const minZ = bottomOffset(obj);
+    if (g.position.z < minZ) g.position.z = minZ;
     setObjects(objects.map((o) => {
       if (o.id !== id) return o;
-      return {
+      return clampToFloor({
         ...o,
         initialPos: [g.position.x, g.position.y, g.position.z],
         initialQuat: [
           g.quaternion.w, g.quaternion.x, g.quaternion.y, g.quaternion.z,
         ],
-      };
+      });
     }));
   }, [objects, setObjects]);
 

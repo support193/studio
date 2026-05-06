@@ -86,6 +86,33 @@ export type EvalResult =
   | { result: 'failed';  reason: string }
   | { result: 'timeout' };
 
+// ─── Floor clamp helpers ──────────────────────────────────────────────────
+//
+// Object center 는 geometric center.  바닥(z=0) 을 뚫지 않으려면 center.z 가
+// "축 방향 half-extent" 이상이어야 함.
+//   box:      size[2]   (z half-extent)
+//   sphere:   size[0]   (radius)
+//   cylinder: size[1]   (half-height; 축은 Z 정렬)
+// 회전된 박스는 size 만으론 정확한 bottom 못 구함 — MVP 는 무회전 가정.
+
+export function bottomOffset(obj: MissionObject): number {
+  switch (obj.type) {
+    case 'box':      return obj.size[2];
+    case 'sphere':   return obj.size[0];
+    case 'cylinder': return obj.size[1];
+  }
+}
+
+/** initialPos.z 를 bottomOffset 위로 끌어올림 (이미 충분하면 그대로). */
+export function clampToFloor(obj: MissionObject): MissionObject {
+  const minZ = bottomOffset(obj);
+  if (obj.initialPos[2] >= minZ) return obj;
+  return {
+    ...obj,
+    initialPos: [obj.initialPos[0], obj.initialPos[1], minZ],
+  };
+}
+
 // ─── Defaults / factories ─────────────────────────────────────────────────
 
 export function defaultObject(id: string): MissionObject {
