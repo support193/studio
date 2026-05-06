@@ -207,7 +207,7 @@ function SceneContent({
 
 // ─── Z-up Floor + Lights (inline, replaces shared Y-up components) ────────
 
-function ZUpFloor() {
+export function ZUpFloor() {
   return (
     <>
       {/* XY plane at z=0 (no rotation) */}
@@ -234,7 +234,7 @@ function ZUpFloor() {
   );
 }
 
-function ZUpLights() {
+export function ZUpLights() {
   return (
     <>
       <ambientLight intensity={0.5} color="#b0b0cc" />
