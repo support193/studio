@@ -197,9 +197,16 @@ function ObjectMesh({
   onClick: () => void;
   setGroupRef: (id: string, el: THREE.Group | null) => void;
 }) {
+  // 안정 ref callback — 인라인 (el) => ... 을 쓰면 매 render 마다 함수 참조가
+  // 바뀌어 React 가 oldRef(null) → newRef(el) 을 반복 호출 → setRefReady
+  // bump → 무한 render 루프 (React #185).  obj.id 별로 useCallback 메모.
+  const refFn = useCallback(
+    (el: THREE.Group | null) => setGroupRef(obj.id, el),
+    [obj.id, setGroupRef],
+  );
   return (
     <group
-      ref={(el) => setGroupRef(obj.id, el)}
+      ref={refFn}
       position={[obj.initialPos[0], obj.initialPos[1], obj.initialPos[2]]}
       quaternion={[obj.initialQuat[1], obj.initialQuat[2], obj.initialQuat[3], obj.initialQuat[0]]}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
