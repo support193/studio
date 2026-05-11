@@ -246,7 +246,9 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
           objects={objects}
           setObjects={setObjects}
           successConditions={successConds}
+          setSuccessConditions={setSuccessConds}
           failConditions={failConds}
+          setFailConditions={setFailConds}
           onClose={() => setShowPreview(false)}
         />
       )}
