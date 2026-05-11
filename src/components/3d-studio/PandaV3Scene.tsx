@@ -26,7 +26,8 @@ import {
   type PandaV3PhysicsHandle,
 } from '@/hooks/useMujocoPhysicsPandaV3';
 import type { PandaV3Controls } from '@/hooks/usePandaV3Controls';
-import type { MissionObject, ObjectState } from '@/lib/missions/types';
+import type { Condition, MissionObject, ObjectState } from '@/lib/missions/types';
+import ConditionTargets from '@/components/missions/ConditionTargets';
 
 // **Make Three.js Z-up.** Must run before any Object3D / Camera is created.
 // Subsequent <Canvas> camera + OrbitControls inherit this up axis.
@@ -167,12 +168,16 @@ function SceneContent({
   onPhysHandle,
   promo = false,
   missionObjects = [],
+  missionSuccessConditions = [],
+  missionFailConditions = [],
 }: {
   controls: PandaV3Controls;
   frameDataRef: React.MutableRefObject<PandaV3FrameSnapshot | null>;
   onPhysHandle?: (h: PandaV3PhysicsHandle) => void;
   promo?: boolean;
   missionObjects?: MissionObject[];
+  missionSuccessConditions?: Condition[];
+  missionFailConditions?: Condition[];
 }) {
   const phys = useMujocoPhysicsPandaV3(true, controls, frameDataRef, missionObjects);
 
@@ -200,6 +205,13 @@ function SceneContent({
       {phys.state.loaded && <PandaMeshes bodiesRef={phys.bodiesRef} />}
       {phys.state.loaded && missionObjects.length > 0 && (
         <MissionObjectMeshes objects={missionObjects} statesRef={phys.objectStatesRef} />
+      )}
+      {(missionSuccessConditions.length > 0 || missionFailConditions.length > 0) && (
+        <ConditionTargets
+          objects={missionObjects}
+          successConditions={missionSuccessConditions}
+          failConditions={missionFailConditions}
+        />
       )}
     </>
   );
@@ -277,6 +289,8 @@ export function PandaV3Scene({
   onPhysHandle,
   promo = false,
   missionObjects = [],
+  missionSuccessConditions = [],
+  missionFailConditions = [],
 }: {
   controls: PandaV3Controls;
   frameDataRef: React.MutableRefObject<PandaV3FrameSnapshot | null>;
@@ -285,6 +299,9 @@ export function PandaV3Scene({
   promo?: boolean;
   /** Mission spec — empty for plain demo, populated for mission player. */
   missionObjects?: MissionObject[];
+  /** Player 모드에서 success/fail target 영역을 wireframe 으로 표시. */
+  missionSuccessConditions?: Condition[];
+  missionFailConditions?: Condition[];
 }) {
   return (
     <div className="h-full w-full">
@@ -304,6 +321,8 @@ export function PandaV3Scene({
             onPhysHandle={onPhysHandle}
             promo={promo}
             missionObjects={missionObjects}
+            missionSuccessConditions={missionSuccessConditions}
+            missionFailConditions={missionFailConditions}
           />
         </Suspense>
       </Canvas>

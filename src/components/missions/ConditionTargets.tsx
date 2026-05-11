@@ -1,0 +1,135 @@
+// Mission player 용 read-only 컨디션 시각화.  Admin Edit 모드의 ConditionVisuals
+// 와 달리 클릭/선택 없음 — 단순 wireframe / cone 만 렌더해서 사용자에게
+// "어디에 무엇을 두면 성공인지" 보여줌.
+//
+// Color: success=초록 / fail=빨강 (admin 과 동일).  fail 도 render 해서 "여기
+// 들어가면 실패한다" 도 알려줌.
+
+import * as THREE from 'three';
+import { Line } from '@react-three/drei';
+import type { Condition, MissionObject } from '@/lib/missions/types';
+
+const SUCCESS_COLOR = '#22c55e';
+const FAIL_COLOR = '#ef4444';
+
+export default function ConditionTargets({
+  objects,
+  successConditions,
+  failConditions,
+}: {
+  objects: MissionObject[];
+  successConditions: Condition[];
+  failConditions: Condition[];
+}) {
+  return (
+    <>
+      {successConditions.map((c, i) => (
+        <TargetViz key={`s-${i}`} cond={c} color={SUCCESS_COLOR} objects={objects} />
+      ))}
+      {failConditions.map((c, i) => (
+        <TargetViz key={`f-${i}`} cond={c} color={FAIL_COLOR} objects={objects} />
+      ))}
+    </>
+  );
+}
+
+function TargetViz({
+  cond, color, objects,
+}: {
+  cond: Condition;
+  color: string;
+  objects: MissionObject[];
+}) {
+  const findObj = (id: string) => objects.find((o) => o.id === id);
+
+  switch (cond.type) {
+    case 'position': {
+      if (cond.region.kind === 'sphere') {
+        const [cx, cy, cz] = cond.region.center;
+        return (
+          <mesh position={[cx, cy, cz]} raycast={() => null}>
+            <sphereGeometry args={[cond.region.radius, 16, 12]} />
+            <meshBasicMaterial color={color} wireframe transparent opacity={0.45} />
+          </mesh>
+        );
+      }
+      const [minx, miny, minz] = cond.region.min;
+      const [maxx, maxy, maxz] = cond.region.max;
+      const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2, cz = (minz + maxz) / 2;
+      const sx = Math.max(0.001, maxx - minx);
+      const sy = Math.max(0.001, maxy - miny);
+      const sz = Math.max(0.001, maxz - minz);
+      return (
+        <mesh position={[cx, cy, cz]} raycast={() => null}>
+          <boxGeometry args={[sx, sy, sz]} />
+          <meshBasicMaterial color={color} wireframe transparent opacity={0.45} />
+        </mesh>
+      );
+    }
+    case 'stackedOn': {
+      // initial 위치 기준으로 dashed line 1개 + lower 위에 wireframe 박스 (목표 stack 위치).
+      const upper = findObj(cond.upper);
+      const lower = findObj(cond.lower);
+      if (!upper || !lower) return null;
+      // upper 가 lower 위에 올라간 목표 z = lower.z + lower.size_z + upper.size_z
+      // (size = half-extents)
+      const lowerH = bottomHalf(lower);
+      const upperH = bottomHalf(upper);
+      const goalZ = lower.initialPos[2] + lowerH + upperH;
+      const targetUpperPos: [number, number, number] = [
+        lower.initialPos[0],
+        lower.initialPos[1],
+        goalZ,
+      ];
+      return (
+        <>
+          {/* 위치 가이드 — 목표 위치에 upper geometry wireframe */}
+          {upper.type === 'box' && (
+            <mesh position={targetUpperPos} raycast={() => null}>
+              <boxGeometry args={[upper.size[0] * 2, upper.size[1] * 2, upper.size[2] * 2]} />
+              <meshBasicMaterial color={color} wireframe transparent opacity={0.4} />
+            </mesh>
+          )}
+          {upper.type === 'sphere' && (
+            <mesh position={targetUpperPos} raycast={() => null}>
+              <sphereGeometry args={[upper.size[0], 16, 12]} />
+              <meshBasicMaterial color={color} wireframe transparent opacity={0.4} />
+            </mesh>
+          )}
+          {upper.type === 'cylinder' && (
+            <mesh position={targetUpperPos} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
+              <cylinderGeometry args={[upper.size[0], upper.size[0], upper.size[1] * 2, 24]} />
+              <meshBasicMaterial color={color} wireframe transparent opacity={0.4} />
+            </mesh>
+          )}
+        </>
+      );
+    }
+    case 'held': {
+      // target 객체 위에 cone — "여기 잡아야 함"
+      const o = findObj(cond.target);
+      if (!o) return null;
+      const [px, py, pz] = o.initialPos;
+      return (
+        <mesh position={[px, py, pz + 0.08]} rotation={[Math.PI, 0, 0]} raycast={() => null}>
+          <coneGeometry args={[0.025, 0.06, 8]} />
+          <meshBasicMaterial color={color} transparent opacity={0.55} />
+        </mesh>
+      );
+    }
+    case 'distance':
+    case 'orientation':
+    case 'atRest':
+      // 시각화 없음 — condition card 자연어로 충분.
+      return null;
+  }
+}
+
+// MissionObject 의 Z 방향 half-extent.
+function bottomHalf(o: MissionObject): number {
+  switch (o.type) {
+    case 'box':      return o.size[2];
+    case 'sphere':   return o.size[0];
+    case 'cylinder': return o.size[1];
+  }
+}

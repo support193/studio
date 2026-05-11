@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RotateCcw, Trophy, XCircle, Clock } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Trophy, XCircle, Clock, Star, Route, Activity } from 'lucide-react';
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
 import { usePandaV3Controls } from '@/hooks/usePandaV3Controls';
 import type {
@@ -22,6 +22,7 @@ import type {
 } from '@/hooks/useMujocoPhysicsPandaV3';
 import { evaluateMission } from '@/lib/missions/evaluator';
 import { describeCondition, shortLabel } from '@/lib/missions/describe';
+import { MetricsTracker, type EvalMetrics } from '@/lib/missions/metrics';
 import type {
   EvalResult,
   GripperState,
@@ -42,8 +43,27 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
   const [elapsedS, setElapsedS] = useState(0);
   const [evalRes, setEvalRes] = useState<EvalResult>({ result: 'running', satisfied: 0, total: mission.successConditions.length });
   const [resultDone, setResultDone] = useState<EvalResult | null>(null);
+  const [metrics, setMetrics] = useState<EvalMetrics | null>(null);
 
-  // 매 1초: timer + evaluator 호출.  result 가 running 이외면 done 으로 lock.
+  const trackerRef = useRef<MetricsTracker>(new MetricsTracker());
+  const lastSampleMsRef = useRef<number>(Date.now());
+
+  // 100ms 샘플링: gripper pos → path/smoothness 누적.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const phys = physRef.current;
+      if (!phys || !phys.state.loaded) return;
+      const handBody = phys.bodiesRef.current.find((b) => b.name === 'hand');
+      if (!handBody) return;
+      const now = Date.now();
+      const dt = (now - lastSampleMsRef.current) / 1000;
+      lastSampleMsRef.current = now;
+      trackerRef.current.update(handBody.position, dt);
+    }, 100);
+    return () => clearInterval(id);
+  }, []);
+
+  // 매 1초: timer + evaluator.
   useEffect(() => {
     const id = setInterval(() => {
       const elapsed = (Date.now() - startMsRef.current) / 1000;
@@ -52,8 +72,6 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
       const phys = physRef.current;
       if (!phys || !phys.state.loaded) return;
 
-      // Gripper state — frameDataRef.gripper_cmd (0..255) 로 closed 비율, hand
-      // body 위치는 bodiesRef 에서.
       const fd = frameDataRef.current;
       const closed = fd ? Math.max(0, Math.min(1, fd.gripper_cmd / 255)) : 0;
       const handBody = phys.bodiesRef.current.find((b) => b.name === 'hand');
@@ -66,6 +84,10 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
       setEvalRes(r);
       if (r.result !== 'running') {
         setResultDone(r);
+        // success 만 메트릭 산출 (fail/timeout 은 의미 없음).
+        if (r.result === 'success') {
+          setMetrics(trackerRef.current.finalize(r.elapsedS, mission.timeLimitS));
+        }
       }
     }, 1000);
     return () => clearInterval(id);
@@ -77,9 +99,12 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
 
   function handleRetry() {
     setResultDone(null);
+    setMetrics(null);
     setElapsedS(0);
     setEvalRes({ result: 'running', satisfied: 0, total: mission.successConditions.length });
     startMsRef.current = Date.now();
+    lastSampleMsRef.current = Date.now();
+    trackerRef.current.reset();
     // Reset robot home + mission objects.
     controls.resetRef.current = true;
     physRef.current?.resetMissionObjects();
@@ -172,6 +197,8 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
         frameDataRef={frameDataRef}
         onPhysHandle={onPhysHandle}
         missionObjects={mission.objects}
+        missionSuccessConditions={mission.successConditions}
+        missionFailConditions={mission.failConditions}
       />
 
       {/* Result modal */}
@@ -182,9 +209,30 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
               <>
                 <Trophy className="mx-auto mb-3 text-[#FACC15]" size={48} />
                 <div className="font-manrope text-[24px] font-semibold text-white">Mission Complete</div>
-                <div className="mt-1 font-mono text-[14px] text-[#a8a8b0]">
-                  Time: {formatTime(resultDone.elapsedS)}
-                </div>
+                {metrics && (
+                  <>
+                    <div className="mt-3 flex items-center justify-center gap-1">
+                      {[1, 2, 3].map((i) => (
+                        <Star
+                          key={i}
+                          size={28}
+                          className={i <= metrics.stars ? 'text-[#FACC15]' : 'text-[#2a2a35]'}
+                          fill={i <= metrics.stars ? '#FACC15' : 'none'}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-[8px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-3">
+                      <MetricCell icon={<Clock size={12} />} label="Time" value={`${metrics.elapsedS.toFixed(1)}s`} />
+                      <MetricCell icon={<Route size={12} />} label="Path" value={`${metrics.pathLengthM.toFixed(2)}m`} />
+                      <MetricCell icon={<Activity size={12} />} label="Smooth" value={`${(metrics.smoothnessScore * 100).toFixed(0)}`} />
+                    </div>
+                  </>
+                )}
+                {!metrics && (
+                  <div className="mt-1 font-mono text-[14px] text-[#a8a8b0]">
+                    Time: {formatTime(resultDone.elapsedS)}
+                  </div>
+                )}
               </>
             ) : resultDone.result === 'timeout' ? (
               <>
@@ -241,4 +289,16 @@ function formatTime(s: number): string {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+function MetricCell({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="flex items-center gap-1 text-[#737780]">
+        {icon}
+        <span className="font-manrope text-[9px] uppercase tracking-wider">{label}</span>
+      </div>
+      <span className="font-mono text-[14px] font-semibold text-white">{value}</span>
+    </div>
+  );
 }
