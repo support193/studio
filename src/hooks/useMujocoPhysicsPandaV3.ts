@@ -250,7 +250,7 @@ export function useMujocoPhysicsPandaV3(
   const objectStatesRef = useRef<ObjectState[]>([]);
 
   /** Mission body indices — populated once on model load for fast read. */
-  const missionBodyInfoRef = useRef<Array<{ id: string; bodyIdx: number; jntQposAdr: number; jntDofAdr: number }>>([]);
+  const missionBodyInfoRef = useRef<Array<{ id: string; bodyIdx: number; jntQposAdr: number; jntDofAdr: number; mass: number }>>([]);
 
   /** Reset mission objects flag — flipped by external caller. */
   const resetMissionFlagRef = useRef<boolean>(false);
@@ -287,13 +287,14 @@ export function useMujocoPhysicsPandaV3(
         const data = new mujoco.MjData(model);
         dataRef.current = data;
 
-        // **Gravity OFF** — panda actuator gain 이 자기 무게 보상 못해서
-        // 중력 켜면 팔이 축 처짐.  이전엔 missionObjects 있을 때만 ON +
-        // body_gravcomp = 1 로 보상 시도했는데, WASM binding 이 model
-        // runtime mutation 을 무시해서 mission player 에서만 droop 발생.
-        // 가장 깔끔한 해결: 중력 항상 OFF.  Mission cubes 도 자유낙하 안
-        // 하지만 (떠있음) — 사용자가 그리퍼로 위치시키면 그 자리에 머무름,
-        // 미션 조건 (position / stackedOn / held / atRest) 은 그대로 동작.
+        // **Gravity OFF + fake gravity on mission bodies** —
+        //   - 전역 중력을 끄면 panda actuator 가 자기 무게 보상 안 해도
+        //     팔이 안 처짐 (/test 와 동일).
+        //   - 그런데 mission cubes 도 안 떨어지는 게 부자연스러우니, 매 step
+        //     mission body 들에 xfrc_applied [0, 0, -mass*g] 직접 주입해서
+        //     자유낙하처럼 보이게 함.
+        //   - body_gravcomp 런타임 mutation 은 이 WASM 빌드에서 silently
+        //     무시되므로 사용 안 함.
         try {
           if (model.opt && model.opt.gravity) {
             model.opt.gravity[0] = 0;
@@ -320,7 +321,7 @@ export function useMujocoPhysicsPandaV3(
         // Mission body 인덱스 + freejoint qpos/dof address 캐싱.  Reset 시
         // 이 주소로 직접 qpos / qvel 덮어써서 teleport.
         // jnt_qposadr 는 모델 array — body 에 매달린 freejoint 의 첫 qpos slot.
-        const minfo: Array<{ id: string; bodyIdx: number; jntQposAdr: number; jntDofAdr: number }> = [];
+        const minfo: Array<{ id: string; bodyIdx: number; jntQposAdr: number; jntDofAdr: number; mass: number }> = [];
         for (const o of missionObjects) {
           const bn = missionBodyName(o.id);
           const bodyIdx = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, bn);
@@ -333,10 +334,7 @@ export function useMujocoPhysicsPandaV3(
           const jntIdx = model.body_jntadr ? model.body_jntadr[bodyIdx] : -1;
           const jntQposAdr = jntIdx >= 0 && model.jnt_qposadr ? model.jnt_qposadr[jntIdx] : -1;
           const jntDofAdr  = jntIdx >= 0 && model.jnt_dofadr  ? model.jnt_dofadr[jntIdx]  : -1;
-          minfo.push({ id: o.id, bodyIdx, jntQposAdr, jntDofAdr });
-
-          // Mission object 는 body_gravcomp = 0 (자유낙하).
-          if (model.body_gravcomp) model.body_gravcomp[bodyIdx] = 0;
+          minfo.push({ id: o.id, bodyIdx, jntQposAdr, jntDofAdr, mass: o.mass });
         }
         missionBodyInfoRef.current = minfo;
 
@@ -412,6 +410,23 @@ export function useMujocoPhysicsPandaV3(
 
           // Gripper actuator (index 7) — Menagerie panda.xml ctrlrange 0..255.
           d.ctrl[7] = controls.targetRef.current.gripper;
+
+          // Fake gravity for mission bodies — 전역 중력은 OFF (panda 안
+          // 처지게).  Mission cubes 만 자유낙하 보이려고 xfrc_applied 에
+          // [0, 0, -m*g] 주입.  매 step 갱신 (mj_step 이 xfrc 를 적분 후
+          // 자동 클리어 하지 않으므로 한 번 주입해도 유지되지만, 안전하게
+          // 매 frame 재기록).
+          if (missionBodyInfoRef.current.length > 0 && d.xfrc_applied) {
+            for (const info of missionBodyInfoRef.current) {
+              const fbase = 6 * info.bodyIdx;
+              d.xfrc_applied[fbase + 0] = 0;
+              d.xfrc_applied[fbase + 1] = 0;
+              d.xfrc_applied[fbase + 2] = -info.mass * 9.81;
+              d.xfrc_applied[fbase + 3] = 0;
+              d.xfrc_applied[fbase + 4] = 0;
+              d.xfrc_applied[fbase + 5] = 0;
+            }
+          }
 
           // Substep physics integration (~4ms × 4 = ~16ms ≈ one RAF frame).
           for (let i = 0; i < SUBSTEPS; i++) {
