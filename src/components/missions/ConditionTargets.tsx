@@ -4,9 +4,12 @@
 //
 // Color: success=초록 / fail=빨강 (admin 과 동일).  fail 도 render 해서 "여기
 // 들어가면 실패한다" 도 알려줌.
+//
+// Pulsing — material opacity 가 sine wave 로 호흡 → "여기 가야 함" 강조.
 
+import { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Line } from '@react-three/drei';
 import type { Condition, MissionObject } from '@/lib/missions/types';
 
 const SUCCESS_COLOR = '#22c55e';
@@ -49,7 +52,7 @@ function TargetViz({
         return (
           <mesh position={[cx, cy, cz]} raycast={() => null}>
             <sphereGeometry args={[cond.region.radius, 16, 12]} />
-            <meshBasicMaterial color={color} wireframe transparent opacity={0.45} />
+            <PulsingMaterial color={color} wireframe base={0.4} amp={0.3} />
           </mesh>
         );
       }
@@ -62,17 +65,14 @@ function TargetViz({
       return (
         <mesh position={[cx, cy, cz]} raycast={() => null}>
           <boxGeometry args={[sx, sy, sz]} />
-          <meshBasicMaterial color={color} wireframe transparent opacity={0.45} />
+          <PulsingMaterial color={color} wireframe base={0.4} amp={0.3} />
         </mesh>
       );
     }
     case 'stackedOn': {
-      // initial 위치 기준으로 dashed line 1개 + lower 위에 wireframe 박스 (목표 stack 위치).
       const upper = findObj(cond.upper);
       const lower = findObj(cond.lower);
       if (!upper || !lower) return null;
-      // upper 가 lower 위에 올라간 목표 z = lower.z + lower.size_z + upper.size_z
-      // (size = half-extents)
       const lowerH = bottomHalf(lower);
       const upperH = bottomHalf(upper);
       const goalZ = lower.initialPos[2] + lowerH + upperH;
@@ -83,46 +83,71 @@ function TargetViz({
       ];
       return (
         <>
-          {/* 위치 가이드 — 목표 위치에 upper geometry wireframe */}
           {upper.type === 'box' && (
             <mesh position={targetUpperPos} raycast={() => null}>
               <boxGeometry args={[upper.size[0] * 2, upper.size[1] * 2, upper.size[2] * 2]} />
-              <meshBasicMaterial color={color} wireframe transparent opacity={0.4} />
+              <PulsingMaterial color={color} wireframe base={0.35} amp={0.3} />
             </mesh>
           )}
           {upper.type === 'sphere' && (
             <mesh position={targetUpperPos} raycast={() => null}>
               <sphereGeometry args={[upper.size[0], 16, 12]} />
-              <meshBasicMaterial color={color} wireframe transparent opacity={0.4} />
+              <PulsingMaterial color={color} wireframe base={0.35} amp={0.3} />
             </mesh>
           )}
           {upper.type === 'cylinder' && (
             <mesh position={targetUpperPos} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
               <cylinderGeometry args={[upper.size[0], upper.size[0], upper.size[1] * 2, 24]} />
-              <meshBasicMaterial color={color} wireframe transparent opacity={0.4} />
+              <PulsingMaterial color={color} wireframe base={0.35} amp={0.3} />
             </mesh>
           )}
         </>
       );
     }
     case 'held': {
-      // target 객체 위에 cone — "여기 잡아야 함"
       const o = findObj(cond.target);
       if (!o) return null;
       const [px, py, pz] = o.initialPos;
       return (
         <mesh position={[px, py, pz + 0.08]} rotation={[Math.PI, 0, 0]} raycast={() => null}>
           <coneGeometry args={[0.025, 0.06, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.55} />
+          <PulsingMaterial color={color} base={0.5} amp={0.3} />
         </mesh>
       );
     }
     case 'distance':
     case 'orientation':
     case 'atRest':
-      // 시각화 없음 — condition card 자연어로 충분.
       return null;
   }
+}
+
+/** sine-wave opacity 로 호흡하는 wireframe / solid 머티리얼. */
+function PulsingMaterial({
+  color, wireframe = false, base = 0.4, amp = 0.3, speed = 2,
+}: {
+  color: string;
+  wireframe?: boolean;
+  base?: number;
+  amp?: number;
+  speed?: number;
+}) {
+  const ref = useRef<THREE.MeshBasicMaterial>(null);
+  useFrame((state) => {
+    if (ref.current) {
+      ref.current.opacity = base + Math.sin(state.clock.elapsedTime * speed) * amp;
+    }
+  });
+  return (
+    <meshBasicMaterial
+      ref={ref}
+      color={color}
+      wireframe={wireframe}
+      transparent
+      opacity={base}
+      depthWrite={false}
+    />
+  );
 }
 
 // MissionObject 의 Z 방향 half-extent.
