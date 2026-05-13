@@ -17,6 +17,7 @@ import {
   Check, ChevronDown, ChevronUp, Keyboard, Play, X,
 } from 'lucide-react';
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
+import GripperCamView from '@/components/missions/GripperCamView';
 import { usePandaV3Controls } from '@/hooks/usePandaV3Controls';
 import type {
   PandaV3FrameSnapshot,
@@ -377,6 +378,27 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
             <ChevronUp size={12} />
           </button>
         )}
+      </div>
+
+      {/* ─── Gripper cam inset (좌상단) ─────────────────────────────────
+          그리퍼 두 finger 사이에서 forward 방향 보는 first-person 시점.
+          별도 R3F Canvas — 메인 캔버스의 physRef 에서 body 위치/회전만
+          읽어와서 물리는 안 돌림. */}
+      <div className="absolute left-4 top-[300px] z-10 w-[240px] overflow-hidden rounded-[10px] border border-[#1f1f1f] bg-black/40 backdrop-blur">
+        <div className="flex items-center justify-between border-b border-[#1f1f1f] px-2.5 py-1">
+          <span className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#a48dff]">
+            ● 그리퍼 캠
+          </span>
+          <span className="font-mono text-[9px] text-[#737780]">POV</span>
+        </div>
+        <div className="aspect-video bg-black">
+          <GripperCamView
+            physRef={physRef}
+            missionObjects={mission.objects}
+            missionSuccessConditions={mission.successConditions}
+            missionFailConditions={mission.failConditions}
+          />
+        </div>
       </div>
 
       {/* ─── Scene ─────────────────────────────────────────────────────── */}

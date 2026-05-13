@@ -50,7 +50,7 @@ function isGripperBody(name: string): boolean {
 
 const OBJ_URLS = PANDA_V3_UNIQUE_OBJS.map((f) => `${PANDA_V3_BASE_URL}/assets/${f}`);
 
-function MissionObjectMeshes({
+export function MissionObjectMeshes({
   objects,
   statesRef,
 }: {
