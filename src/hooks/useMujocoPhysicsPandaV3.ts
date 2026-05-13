@@ -287,23 +287,11 @@ export function useMujocoPhysicsPandaV3(
         const data = new mujoco.MjData(model);
         dataRef.current = data;
 
-        // **Gravity OFF + fake gravity on mission bodies** —
-        //   - 전역 중력을 끄면 panda actuator 가 자기 무게 보상 안 해도
-        //     팔이 안 처짐 (/test 와 동일).
-        //   - 그런데 mission cubes 도 안 떨어지는 게 부자연스러우니, 매 step
-        //     mission body 들에 xfrc_applied [0, 0, -mass*g] 직접 주입해서
-        //     자유낙하처럼 보이게 함.
-        //   - body_gravcomp 런타임 mutation 은 이 WASM 빌드에서 silently
-        //     무시되므로 사용 안 함.
-        try {
-          if (model.opt && model.opt.gravity) {
-            model.opt.gravity[0] = 0;
-            model.opt.gravity[1] = 0;
-            model.opt.gravity[2] = 0;
-          }
-        } catch (e) {
-          console.warn('[panda-v3] gravity off failed:', e);
-        }
+        // **Gravity 정석**: panda.xml / hand.xml 의 `<default class="panda">`
+        // 에 `<body gravcomp="1"/>` 박혀있음 (link0, hand 도 class="panda"
+        // 직접 명시).  → MuJoCo 가 panda body 들의 무게를 passive force 로
+        // 자동 상쇄.  mission cubes 는 class 안 쓰니 gravcomp=0 → 자유낙하.
+        // 전역 중력은 default (~-9.81) 그대로 둠.  xfrc_applied hack 불필요.
 
         const homeKeyId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY.value, 'home');
         if (homeKeyId >= 0) mujoco.mj_resetDataKeyframe(model, data, homeKeyId);
@@ -410,23 +398,6 @@ export function useMujocoPhysicsPandaV3(
 
           // Gripper actuator (index 7) — Menagerie panda.xml ctrlrange 0..255.
           d.ctrl[7] = controls.targetRef.current.gripper;
-
-          // Fake gravity for mission bodies — 전역 중력은 OFF (panda 안
-          // 처지게).  Mission cubes 만 자유낙하 보이려고 xfrc_applied 에
-          // [0, 0, -m*g] 주입.  매 step 갱신 (mj_step 이 xfrc 를 적분 후
-          // 자동 클리어 하지 않으므로 한 번 주입해도 유지되지만, 안전하게
-          // 매 frame 재기록).
-          if (missionBodyInfoRef.current.length > 0 && d.xfrc_applied) {
-            for (const info of missionBodyInfoRef.current) {
-              const fbase = 6 * info.bodyIdx;
-              d.xfrc_applied[fbase + 0] = 0;
-              d.xfrc_applied[fbase + 1] = 0;
-              d.xfrc_applied[fbase + 2] = -info.mass * 9.81;
-              d.xfrc_applied[fbase + 3] = 0;
-              d.xfrc_applied[fbase + 4] = 0;
-              d.xfrc_applied[fbase + 5] = 0;
-            }
-          }
 
           // Substep physics integration (~4ms × 4 = ~16ms ≈ one RAF frame).
           for (let i = 0; i < SUBSTEPS; i++) {
