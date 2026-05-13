@@ -287,28 +287,21 @@ export function useMujocoPhysicsPandaV3(
         const data = new mujoco.MjData(model);
         dataRef.current = data;
 
-        // **Gravity** — 두 모드:
-        //  1) missionObjects 없음: 전역 중력 0 (PD actuator 가 panda 자체
-        //     무게를 보상 못 해서 팔이 축 처짐).
-        //  2) missionObjects 있음: 전역 중력 ON + panda body 들에만
-        //     gravcomp = 1 (큐브는 떨어지고, 팔은 안 처짐).
+        // **Gravity OFF** — panda actuator gain 이 자기 무게 보상 못해서
+        // 중력 켜면 팔이 축 처짐.  이전엔 missionObjects 있을 때만 ON +
+        // body_gravcomp = 1 로 보상 시도했는데, WASM binding 이 model
+        // runtime mutation 을 무시해서 mission player 에서만 droop 발생.
+        // 가장 깔끔한 해결: 중력 항상 OFF.  Mission cubes 도 자유낙하 안
+        // 하지만 (떠있음) — 사용자가 그리퍼로 위치시키면 그 자리에 머무름,
+        // 미션 조건 (position / stackedOn / held / atRest) 은 그대로 동작.
         try {
-          const hasMission = missionObjects.length > 0;
-          if (model.opt && model.opt.gravity && !hasMission) {
+          if (model.opt && model.opt.gravity) {
             model.opt.gravity[0] = 0;
             model.opt.gravity[1] = 0;
             model.opt.gravity[2] = 0;
           }
-          // body_gravcomp 가 노출되면 panda body 들에만 gravcomp 적용.
-          // mission body 들은 0 으로 둬서 자유낙하.
-          const grav = model.body_gravcomp;
-          if (grav && typeof grav.length === 'number') {
-            for (let i = 0; i < grav.length; i++) grav[i] = 1.0;
-            // Mission objects 의 body index 는 아래에서 알아낸 후 0 으로 덮음.
-            // 일단 모두 1 로 셋팅.
-          }
         } catch (e) {
-          console.warn('[panda-v3] gravity setup failed:', e);
+          console.warn('[panda-v3] gravity off failed:', e);
         }
 
         const homeKeyId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY.value, 'home');
