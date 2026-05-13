@@ -50,6 +50,7 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
   const [resultDone, setResultDone] = useState<EvalResult | null>(null);
   const [metrics, setMetrics] = useState<EvalMetrics | null>(null);
   const [controlsOpen, setControlsOpen] = useState(true);
+  const [sensitivity, setSensitivity] = useState(100);
 
   const trackerRef = useRef<MetricsTracker>(new MetricsTracker());
   const lastSampleMsRef = useRef<number>(Date.now());
@@ -315,8 +316,34 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
         </div>
       )}
 
-      {/* ─── Bottom-right: Controls 패널 (접기 가능) ──────────────────── */}
-      <div className="absolute bottom-4 right-4 z-10">
+      {/* ─── Bottom-right: Speed 슬라이더 + Controls 패널 ──────────────── */}
+      <div className="absolute bottom-4 right-4 z-10 flex flex-col items-end gap-2">
+        <div className="w-[220px] rounded-[12px] border border-[#1f1f1f] bg-black/50 p-3 backdrop-blur">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#7C5CFC]">
+              속도
+            </span>
+            <span className="font-mono text-[10px] text-[#C0C0CC]">{sensitivity}%</span>
+          </div>
+          <input
+            type="range"
+            min={10}
+            max={300}
+            step={10}
+            value={sensitivity}
+            onChange={(e) => {
+              const v = parseInt(e.target.value);
+              setSensitivity(v);
+              controls.setSensitivity(v);
+            }}
+            className="w-full accent-[#7C5CFC]"
+          />
+          <div className="mt-0.5 flex justify-between text-[9px] text-[#555]">
+            <span>10%</span>
+            <span>100%</span>
+            <span>300%</span>
+          </div>
+        </div>
         {controlsOpen ? (
           <div className="rounded-[12px] border border-[#1f1f1f] bg-black/50 p-3 backdrop-blur">
             <div className="mb-2 flex items-center justify-between gap-3">
