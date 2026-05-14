@@ -13,8 +13,9 @@ import { cn } from '@/lib/utils/cn';
 type SubItem = { href: string; label: string };
 
 const STUDIO_ITEMS: SubItem[] = [
-  { href: '/missions', label: 'Mission' },
-  { href: '/test',     label: 'Test' },
+  { href: '/missions',    label: 'Mission' },
+  { href: '/test',        label: 'Test' },
+  { href: '/xp-station',  label: 'XP Station' },
 ];
 
 export default function Sidebar() {
