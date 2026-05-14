@@ -7,9 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { computeXp } from '@/lib/missions/metrics';
 import type { EpisodeFlags, SubMetrics } from '@/lib/missions/metrics';
-import type { Difficulty } from '@/lib/missions/types';
 
 interface FinishBody {
   status: 'success' | 'failed' | 'timeout';
@@ -62,47 +60,9 @@ export async function POST(
     return NextResponse.json({ error: 'already_finalised' }, { status: 409 });
   }
 
-  const { data: mission } = await supabase
-    .from('missions')
-    .select('difficulty')
-    .eq('id', log.mission_id)
-    .single();
-  const difficulty: Difficulty = (mission?.difficulty ?? 'medium') as Difficulty;
-
-  const { data: prior } = await supabase
-    .from('mission_attempt_logs')
-    .select('stars')
-    .eq('mission_id', log.mission_id)
-    .eq('user_id', user.id)
-    .neq('id', logId)
-    .order('stars', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const previousBestStars = (prior?.stars ?? 0) as 0 | 1 | 2 | 3;
-
-  const xp = computeXp(
-    { difficulty },
-    {
-      stars: body.stars,
-      qualityScore: body.qualityScore,
-      flags: body.flags,
-      // unused fields satisfied to keep computeXp signature simple
-      elapsedS: body.elapsedS,
-      pathLengthM: body.raw.pathLengthM,
-      meanSpeedMps: 0,
-      smoothnessScore: body.sub.smoothness,
-      sub: body.sub,
-      raw: {
-        jerkRMS: body.raw.jerkRMS,
-        gripperToggleCount: body.raw.gripperToggleCount,
-        velocityReversalCount: body.raw.velocityReversalCount,
-        idleFrameRatio: body.raw.idleFrameRatio,
-        optimalPathM: body.raw.optimalPathM,
-      },
-    },
-    previousBestStars,
-  );
-
+  // XP is no longer awarded per-attempt; it's distributed weekly from a
+  // pool sized by xp_settings.  Per-attempt xp_awarded stays null until the
+  // admin runs admin_distribute_week for the week containing this attempt.
   const { data: updated, error: upErr } = await supabase
     .from('mission_attempt_logs')
     .update({
@@ -118,7 +78,6 @@ export async function POST(
       economy:         body.sub.economy,
       quality_score:   body.qualityScore,
       stars:           body.stars,
-      xp_awarded:      xp,
       flag_timed_out:            body.flags.flag_timed_out,
       flag_never_touched_object: body.flags.flag_never_touched_object,
       flag_excessive_regrasps:   body.flags.flag_excessive_regrasps,
@@ -140,5 +99,5 @@ export async function POST(
   if (upErr) {
     return NextResponse.json({ error: upErr.message }, { status: 500 });
   }
-  return NextResponse.json({ data: updated, xp });
+  return NextResponse.json({ data: updated });
 }

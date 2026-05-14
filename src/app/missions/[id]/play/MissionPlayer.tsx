@@ -66,7 +66,6 @@ export default function MissionPlayer({
   const [stabilizing, setStabilizing] = useState(false);
   const [resultDone, setResultDone] = useState<EvalResult | null>(null);
   const [metrics, setMetrics] = useState<EvalMetrics | null>(null);
-  const [awardedXp, setAwardedXp] = useState<number | null>(null);
   const [sensitivity, setSensitivity] = useState(100);
   const [controlsOpen, setControlsOpen] = useState(true);
 
@@ -227,17 +226,13 @@ export default function MissionPlayer({
             idleFrameRatio:        m.raw.idleFrameRatio,
           },
         }),
-      })
-        .then((res) => res.ok ? res.json() : null)
-        .then((j) => { if (j && typeof j.xp === 'number') setAwardedXp(j.xp); })
-        .catch(() => { /* network error — XP simply won't display */ });
+      }).catch(() => { /* network error — score still shown locally */ });
     }
   }
 
   const handleReset = useCallback(() => {
     setResultDone(null);
     setMetrics(null);
-    setAwardedXp(null);
     setStabilizing(false);
     setElapsedS(0);
     setEvalRes({ result: 'running', satisfied: 0, total: mission.successConditions.length });
@@ -595,19 +590,17 @@ export default function MissionPlayer({
                     />
                   ))}
                 </div>
-                <div className="mt-3 flex items-center justify-center gap-4">
+                <div className="mt-3 flex items-center justify-center gap-6">
                   <div className="text-center">
                     <div className="font-manrope text-[10px] uppercase tracking-wider text-[#737780]">Quality</div>
                     <div className="font-manrope text-[28px] font-semibold text-white">{metrics.qualityScore}</div>
                   </div>
-                  {awardedXp !== null && (
-                    <div className="text-center">
-                      <div className="font-manrope text-[10px] uppercase tracking-wider text-[#737780]">XP</div>
-                      <div className="flex items-center gap-1 font-manrope text-[28px] font-semibold text-[#a48dff]">
-                        <Sparkles size={20} />+{awardedXp}
-                      </div>
+                  <div className="text-center">
+                    <div className="font-manrope text-[10px] uppercase tracking-wider text-[#737780]">XP</div>
+                    <div className="flex items-center gap-1 font-manrope text-[15px] font-medium text-[#a48dff]">
+                      <Sparkles size={14} /> Paid out next week
                     </div>
-                  )}
+                  </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-1.5 rounded-[8px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-3">
                   <SubMetricBar label="Task"       value={metrics.sub.task_completion} />

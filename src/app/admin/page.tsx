@@ -1,7 +1,7 @@
 // Admin home — mission list + "New mission" CTA.
 
 import Link from 'next/link';
-import { Plus, Clock, ListChecks, Play, BarChart3 } from 'lucide-react';
+import { Plus, Clock, ListChecks, Play, BarChart3, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +34,13 @@ export default async function AdminHomePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/admin/xp"
+            className="flex items-center gap-2 rounded-full border border-[#1f1f1f] px-4 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:border-[#7C5CFC] hover:text-white"
+          >
+            <Sparkles size={16} strokeWidth={1.75} />
+            XP payouts
+          </Link>
           <Link
             href="/admin/attempts"
             className="flex items-center gap-2 rounded-full border border-[#1f1f1f] px-4 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:border-[#7C5CFC] hover:text-white"
