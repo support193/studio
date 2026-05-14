@@ -24,6 +24,7 @@ export interface MissionFormValues {
   goal: string;
   steps: string[];
   timeLimitS: number;
+  maxAttempts: number;
   objects: MissionObject[];
   successConditions: Condition[];
   failConditions: Condition[];
@@ -41,6 +42,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
     initial?.steps && initial.steps.length > 0 ? initial.steps : [''],
   );
   const [timeLimit, setTimeLimit] = useState(initial?.timeLimitS ?? 300);
+  const [maxAttempts, setMaxAttempts] = useState(initial?.maxAttempts ?? 5);
   const [objects, setObjects] = useState<MissionObject[]>(initial?.objects ?? []);
   const [successConds, setSuccessConds] = useState<Condition[]>(initial?.successConditions ?? []);
   const [failConds, setFailConds] = useState<Condition[]>(initial?.failConditions ?? []);
@@ -73,6 +75,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
       goal: goal.trim() || null,
       steps: cleanSteps,
       time_limit_s: Math.max(1, timeLimit),
+      max_attempts: Math.max(1, maxAttempts),
       objects: objects,
       success_conditions: successConds,
       fail_conditions: failConds,
@@ -186,6 +189,17 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
                 className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
               />
               <span className="font-manrope text-[12px] text-[#737780]">sec</span>
+            </div>
+          </Field>
+          <Field label="Max attempts" hint="How many times each user is allowed to play this mission.">
+            <div className="flex items-center gap-2">
+              <input
+                type="number" min={1} max={999}
+                value={maxAttempts}
+                onChange={(e) => setMaxAttempts(parseInt(e.target.value) || 0)}
+                className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+              />
+              <span className="font-manrope text-[12px] text-[#737780]">tries / user</span>
             </div>
           </Field>
         </>

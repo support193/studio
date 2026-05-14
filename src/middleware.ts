@@ -1,10 +1,15 @@
-// Auth middleware — gate /admin/* behind a valid Supabase session.
-// /admin/login is exempt so unauthenticated users can sign in.
+// Auth middleware.
+//   1. /admin/* requires a valid Supabase session AND being in the ADMIN_EMAILS allowlist.
+//      /admin/login is exempt so unauthenticated users can sign in.
+//   2. /missions/:id/play requires any signed-in user; non-authenticated users
+//      are redirected to /login with ?next= so we can resume after signin.
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 type CookieSet = { name: string; value: string; options: CookieOptions };
+
+const PLAY_REGEX = /^\/missions\/[^/]+\/play$/;
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next({ request: req });
@@ -28,7 +33,7 @@ export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   // Admin allowlist — only emails in ADMIN_EMAILS env get past the gate.
-  // Self-signup하더라도 이 화이트리스트에 없으면 즉시 로그아웃 + 차단.
+  // Even after self-signup, a user not on this list is signed out immediately.
   const adminEmails = (process.env.ADMIN_EMAILS ?? '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
@@ -60,9 +65,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // /missions/:id/play — any signed-in user is allowed.
+  if (PLAY_REGEX.test(path) && !user) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/login';
+    url.searchParams.set('next', path);
+    return NextResponse.redirect(url);
+  }
+
   return res;
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/missions/:path*'],
 };

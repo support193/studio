@@ -57,6 +57,8 @@ export interface MissionDefinition {
   goal: string | null;
   steps: string[];
   timeLimitS: number;
+  /** Max number of times any single user is allowed to enter the player. */
+  maxAttempts: number;
   objects: MissionObject[];
   successConditions: Condition[];   // AND — all must hold
   failConditions: Condition[];      // OR — any one fails the run

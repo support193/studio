@@ -1,38 +1,85 @@
-// Missions — Figma 10_zeno_studio_ver.1.0.0 / mission frame (4:143318) 1:1.
-// 헤더 (3d Studio + subtitle) + 필터 바 + 3-컬럼 카드 그리드.
-// Figma 의 카드 7개 중 마지막 1개는 "active/featured" 스타일 (글로우 + brighter border).
-
-'use client';
+// Missions catalog — Figma 10_zeno_studio_ver.1.0.0 / mission frame (4:143318) 1:1.
+// Server-rendered: fetches missions from Supabase (public read) and, when the
+// visitor is signed in, merges in their per-mission attempt counter.
 
 import Link from 'next/link';
-import { Bot, Hand, Flag, Clock, ChevronDown, Search } from 'lucide-react';
+import { Bot, Flag, Clock, ChevronDown, Search } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
 
-type CardCategory = 'hand' | 'robot';
+export const dynamic = 'force-dynamic';
 
-interface MissionCard {
-  category: CardCategory;
-  taskName: string;
-  description: string;
-  count: string;        // e.g. "1/5"
-  duration: string;     // e.g. "5min"
-  buttonLabel: string;  // e.g. "Kitchen"
-  href?: string;        // optional route
-  disabled?: boolean;
-  featured?: boolean;   // 7번째 카드 강조 스타일
-  durationDanger?: boolean;
+interface MissionRow {
+  id: string;
+  title: string;
+  goal: string | null;
+  time_limit_s: number;
+  max_attempts: number;
 }
 
-const CARDS: MissionCard[] = [
-  { category: 'hand',  taskName: 'Task name', description: 'Capture and process 3D hand-tracking sessions', count: '1/5', duration: '5min', buttonLabel: 'Kitchen' },
-  { category: 'robot', taskName: 'Task name', description: 'Capture and process 3D hand-tracking sessions', count: '1/5', duration: '5min', buttonLabel: 'Kitchen' },
-  { category: 'hand',  taskName: 'Task name', description: 'Capture and process 3D hand-tracking sessions', count: '1/5', duration: '5min', buttonLabel: 'Kitchen' },
-  { category: 'robot', taskName: 'Task name', description: 'Capture and process 3D hand-tracking sessions', count: '1/5', duration: '5min', buttonLabel: 'Kitchen' },
-  { category: 'hand',  taskName: 'Task name', description: 'Capture and process 3D hand-tracking sessions', count: '1/5', duration: '5min', buttonLabel: 'Kitchen' },
-  { category: 'robot', taskName: 'Task name', description: 'Capture and process 3D hand-tracking sessions', count: '1/5', duration: '5min', buttonLabel: 'Kitchen', disabled: true },
-  { category: 'hand',  taskName: 'Task name', description: 'Capture and process 3D hand-tracking sessions', count: '1/5', duration: '1m',   buttonLabel: 'Kitchen', featured: true, durationDanger: true, href: '/test' },
-];
+interface AttemptRow {
+  mission_id: string;
+  attempts: number;
+}
 
-export default function MissionsPage() {
+interface MissionCard {
+  id: string;
+  taskName: string;
+  description: string;
+  count: string;
+  duration: string;
+  href: string;
+  disabled: boolean;
+  durationDanger: boolean;
+}
+
+function formatDuration(sec: number): string {
+  if (sec < 60) return `${sec}s`;
+  if (sec % 60 === 0) return `${sec / 60}min`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}m ${s}s`;
+}
+
+export default async function MissionsPage() {
+  const supabase = await createClient();
+
+  // Public read (anon RLS allows SELECT).
+  const { data: missionsData } = await supabase
+    .from('missions')
+    .select('id, title, goal, time_limit_s, max_attempts')
+    .order('title', { ascending: true });
+  const missions = (missionsData ?? []) as MissionRow[];
+
+  // Per-user attempt counts (only when signed in).
+  const { data: { user } } = await supabase.auth.getUser();
+  let attemptsByMission: Record<string, number> = {};
+  if (user) {
+    const { data: attemptsData } = await supabase
+      .from('mission_attempts')
+      .select('mission_id, attempts')
+      .eq('user_id', user.id);
+    for (const row of (attemptsData ?? []) as AttemptRow[]) {
+      attemptsByMission[row.mission_id] = row.attempts;
+    }
+  }
+
+  const cards: MissionCard[] = missions.map((m) => {
+    const used = attemptsByMission[m.id] ?? 0;
+    const exhausted = used >= m.max_attempts;
+    return {
+      id: m.id,
+      taskName: m.title,
+      description: m.goal ?? '',
+      count: `${used}/${m.max_attempts}`,
+      duration: formatDuration(m.time_limit_s),
+      // Non-signed-in users still see the catalog; middleware redirects
+      // them to /login when they click the card.
+      href: `/missions/${m.id}/play`,
+      disabled: exhausted,
+      durationDanger: m.time_limit_s <= 60,
+    };
+  });
+
   return (
     <div className="px-[24px] pb-[40px]">
       {/* Page header */}
@@ -49,29 +96,19 @@ export default function MissionsPage() {
       <div className="flex flex-col gap-[28px]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-[16px]">
-            {/* Filter buttons */}
             <div className="flex items-center gap-[8px]">
               <FilterButton label="Type" />
               <FilterButton label="Status" />
               <ShowAllButton />
             </div>
-            {/* Vertical divider */}
             <div className="h-[24px] w-px bg-[#1f1f1f]" />
-            {/* Category chips */}
             <div className="flex items-center gap-[8px]">
               <CategoryChip
-                category="hand"
-                icon={<Hand size={16} strokeWidth={1.5} />}
-                label="Hand Demo"
-              />
-              <CategoryChip
-                category="robot"
                 icon={<Bot size={16} strokeWidth={1.5} />}
                 label="Robot Arm Demo"
               />
             </div>
           </div>
-          {/* Search */}
           <div className="flex w-[280px] items-center gap-[8px] rounded-[8px] border border-[#1f1f1f] px-[16px] py-[8px]">
             <Search size={16} strokeWidth={1.5} className="text-[#737780]" />
             <input
@@ -83,11 +120,17 @@ export default function MissionsPage() {
         </div>
 
         {/* Cards grid */}
-        <div className="flex flex-wrap gap-[24px]">
-          {CARDS.map((card, i) => (
-            <MissionCardEl key={i} card={card} />
-          ))}
-        </div>
+        {cards.length === 0 ? (
+          <div className="rounded-[16px] border border-dashed border-[#1f1f1f] py-16 text-center">
+            <p className="font-manrope text-[14px] text-[#737780]">No missions yet.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-[24px]">
+            {cards.map((card) => (
+              <MissionCardEl key={card.id} card={card} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -121,53 +164,30 @@ function ShowAllButton() {
 }
 
 function CategoryChip({
-  category,
   icon,
   label,
 }: {
-  category: CardCategory;
   icon: React.ReactNode;
   label: string;
 }) {
-  const isHand = category === 'hand';
   return (
-    <span
-      className={[
-        'flex items-center gap-[4px] rounded-[8px] py-[8px] pl-[12px] pr-[16px]',
-        isHand
-          ? 'bg-[rgba(244,163,48,0.15)] text-[#f4a330]'
-          : 'bg-[rgba(174,255,24,0.15)] text-[#aeff18]',
-      ].join(' ')}
-    >
+    <span className="flex items-center gap-[4px] rounded-[8px] bg-[rgba(174,255,24,0.15)] py-[8px] pl-[12px] pr-[16px] text-[#aeff18]">
       <span>{icon}</span>
       <span className="font-manrope text-[12px] font-medium leading-[18px]">{label}</span>
     </span>
   );
 }
 
-function CategoryBadge({ category }: { category: CardCategory }) {
-  // Figma 의 카드 좌상단 chip ("Hand mode" / "Robot Arm").  데코 blob 은 단순화.
-  const isHand = category === 'hand';
+function CategoryBadge() {
   return (
     <div className="relative flex items-center gap-[4px] overflow-hidden rounded-[6px] border border-white/80 bg-[rgba(248,249,250,0.05)] px-[12px] py-[7px]">
-      {/* decorative dots — simplified from Figma's gradient blobs */}
       <span className="flex items-center gap-[3px]">
-        {isHand ? (
-          <>
-            <span className="size-[6px] rounded-full bg-[#b1b2ff]" />
-            <span className="size-[6px] rounded-full bg-[#6c78d8]" />
-            <span className="size-[6px] rounded-full bg-[#9fd1ff]" />
-          </>
-        ) : (
-          <>
-            <span className="size-[6px] rounded-full bg-[#ff2f6d]" />
-            <span className="size-[6px] rounded-full bg-[#ff3d00]" />
-            <span className="size-[6px] rounded-full bg-[#138eff]" />
-          </>
-        )}
+        <span className="size-[6px] rounded-full bg-[#ff2f6d]" />
+        <span className="size-[6px] rounded-full bg-[#ff3d00]" />
+        <span className="size-[6px] rounded-full bg-[#138eff]" />
       </span>
       <span className="font-manrope text-[12px] font-medium leading-none tracking-[-0.12px] text-white">
-        {isHand ? 'Hand mode' : 'Robot Arm'}
+        Robot Arm
       </span>
     </div>
   );
@@ -179,20 +199,12 @@ function MissionCardEl({ card }: { card: MissionCard }) {
       className={[
         'flex w-[528px] flex-col items-start rounded-[20px] border p-[12px]',
         card.disabled ? 'opacity-30' : '',
-        card.featured
-          ? 'border-[rgba(248,249,250,0.3)] shadow-[0_0_20px_0_rgba(248,249,250,0.25)]'
-          : 'border-[rgba(248,249,250,0.1)] bg-[rgba(248,249,250,0.02)]',
+        'border-[rgba(248,249,250,0.1)] bg-[rgba(248,249,250,0.02)]',
       ].join(' ')}
     >
       <div
-        className={[
-          'relative flex h-[240px] w-full flex-col items-start justify-between overflow-hidden rounded-[16px] p-[20px]',
-          card.featured
-            ? 'border border-[rgba(248,249,250,0.3)] bg-gradient-to-r from-[rgba(248,249,250,0)] to-[rgba(248,249,250,0.1)]'
-            : 'border border-[rgba(255,255,255,0.7)]',
-        ].join(' ')}
-        style={card.featured ? undefined : {
-          // Figma: linear-gradient(-90deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)
+        className="relative flex h-[240px] w-full flex-col items-start justify-between overflow-hidden rounded-[16px] border border-[rgba(255,255,255,0.7)] p-[20px]"
+        style={{
           backgroundImage: 'linear-gradient(-90deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
           backdropFilter: 'blur(21px)',
         }}
@@ -200,21 +212,19 @@ function MissionCardEl({ card }: { card: MissionCard }) {
         {/* Noise / grain texture overlay — Figma uses mix-blend-mode: soft-light
             with opacity ~0.2 to add a subtle "fabric" feel.  Generated via
             inline SVG <feTurbulence> so no external asset is required. */}
-        {!card.featured && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[16px]"
-            style={{
-              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>")`,
-              mixBlendMode: 'soft-light',
-              opacity: 0.2,
-            }}
-          />
-        )}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-[16px]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>")`,
+            mixBlendMode: 'soft-light',
+            opacity: 0.2,
+          }}
+        />
 
         {/* Top row — category badge */}
         <div className="relative flex w-full items-center">
-          <CategoryBadge category={card.category} />
+          <CategoryBadge />
         </div>
 
         {/* Bottom row — title + meta + button */}
@@ -224,9 +234,11 @@ function MissionCardEl({ card }: { card: MissionCard }) {
               <h3 className="font-manrope text-[24px] font-semibold leading-[34px] text-[#f8f9fa]">
                 {card.taskName}
               </h3>
-              <p className="font-manrope text-[14px] leading-[1.4] text-[#939399]">
-                {card.description}
-              </p>
+              {card.description && (
+                <p className="font-manrope line-clamp-2 text-[14px] leading-[1.4] text-[#939399]">
+                  {card.description}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-[12px]">
               <span className="flex items-center gap-[4px]">
@@ -261,7 +273,7 @@ function MissionCardEl({ card }: { card: MissionCard }) {
             }}
           >
             <span className="font-manrope text-[14px] leading-[1.2] text-[#f8f9fa]">
-              {card.buttonLabel}
+              {card.disabled ? 'No tries left' : 'Play'}
             </span>
           </button>
         </div>
@@ -269,12 +281,10 @@ function MissionCardEl({ card }: { card: MissionCard }) {
     </div>
   );
 
-  if (card.href && !card.disabled) {
-    return (
-      <Link href={card.href} className="block">
-        {inner}
-      </Link>
-    );
-  }
-  return inner;
+  if (card.disabled) return inner;
+  return (
+    <Link href={card.href} className="block">
+      {inner}
+    </Link>
+  );
 }
