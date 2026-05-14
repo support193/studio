@@ -24,9 +24,49 @@ import type {
   Difficulty,
   MissionDefinition,
   ObjectState,
+  Quat,
   Vec3,
 } from './types';
 import { XP_BASE } from './types';
+import { evaluateMission } from './evaluator';
+
+// ─── Trajectory recording format (v1) ────────────────────────────────────
+//
+// One frame per ~100ms.  Stored as compressed JSON in Supabase Storage when
+// the server-derived quality_score is at or above xp_settings.trajectory_min_score.
+//
+// Why this shape: every input the metrics tracker + evaluator needs to
+// recompute on the server, plus enough state for a future replay viewer or
+// behavior-cloning consumer.
+
+export interface TrajectoryFrame {
+  /** seconds since episode start */
+  t: number;
+  /** end-effector world position (panda "hand" body) */
+  hand_p: Vec3;
+  /** end-effector world orientation, MuJoCo (w, x, y, z) */
+  hand_q: Quat;
+  /** gripper closed command, 0..1 */
+  grip: number;
+  /** live state of every mission object */
+  objs: Array<{
+    id: string;
+    p: Vec3;
+    q: Quat;
+    lv: Vec3;
+    av: Vec3;
+  }>;
+}
+
+export interface TrajectoryEnvelope {
+  version: 1;
+  mission_id: string;
+  user_id: string;
+  recorded_at: string;       // ISO timestamp
+  time_limit_s: number;
+  par_time_s: number;
+  frames: TrajectoryFrame[];
+}
 
 // ─── Public outputs ──────────────────────────────────────────────────────
 
@@ -374,6 +414,163 @@ export class MetricsTracker {
       },
     };
   }
+}
+
+// ─── Server-side replay (recompute score from trajectory frames) ────────
+//
+// The browser computes a quality score in real time, but it's not the
+// canonical one — that's derived here on the server from the recorded
+// trajectory frames.  Two consumers:
+//
+//   1. /api/missions/log/[id]/finish — the immediate hand-off after a play.
+//   2. Future: BC pipeline / admin replay viewer.
+//
+// Pure TS; safe to import from either Node API routes or the browser.
+
+const STABILITY_DWELL_MS_REPLAY = 1000;
+
+export interface ReplayResult {
+  status: 'success' | 'failed' | 'timeout' | 'abandoned';
+  resultReason: string | null;
+  elapsedS: number;
+  anyFailEverFired: boolean;
+  metrics: EvalMetrics;
+}
+
+export function replayEpisode(
+  mission: MissionDefinition,
+  frames: TrajectoryFrame[],
+): ReplayResult {
+  const tracker = new MetricsTracker();
+  const relevantIds = collectRelevantIds(mission.successConditions);
+
+  if (frames.length === 0) {
+    return {
+      status: 'abandoned',
+      resultReason: 'no_frames',
+      elapsedS: 0,
+      anyFailEverFired: false,
+      metrics: tracker.finalize({
+        hardSuccess: false,
+        anyFailEverFired: false,
+        satisfiedFrac: 0,
+        stepsInOrderFrac: 0,
+        elapsedS: 0,
+        timeLimitS: mission.timeLimitS,
+        parTimeS: mission.parTimeS,
+        optimalPathM: 0.4,
+        timedOut: false,
+      }),
+    };
+  }
+
+  const optimalPathM = estimateOptimalPath(mission, frames[0].hand_p);
+
+  let prevT = frames[0].t;
+  let firstAllSatMs: number | null = null;
+  let anyFailEverFired = false;
+  let satisfiedFinal = 0;
+  let totalConds = mission.successConditions.length;
+
+  let endStatus: 'success' | 'failed' | 'timeout' | 'abandoned' = 'abandoned';
+  let endReason: string | null = null;
+  let endElapsedS = frames[frames.length - 1].t;
+
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    const dt = i === 0 ? 0.1 : Math.max(0.001, f.t - prevT);
+    prevT = f.t;
+
+    const objs: ObjectState[] = f.objs.map((o) => ({
+      id: o.id,
+      pos: o.p,
+      quat: o.q,
+      linVel: o.lv,
+      angVel: o.av,
+    }));
+
+    // Evaluator pass — determines per-frame condition state.
+    const gripperState = { closed: f.grip, pos: f.hand_p };
+    const r = evaluateMission(mission, objs, gripperState, f.t);
+
+    // Did any fail condition fire at THIS instant?  evaluateMission short-
+    // circuits on failure, so result==='failed' means yes.
+    const failActiveNow = r.result === 'failed';
+    if (failActiveNow) anyFailEverFired = true;
+
+    tracker.update(f.hand_p, f.grip, objs, relevantIds, failActiveNow, dt);
+
+    if (r.result === 'failed') {
+      endStatus = 'failed';
+      endReason = r.reason;
+      endElapsedS = f.t;
+      break;
+    }
+    if (r.result === 'timeout') {
+      endStatus = 'timeout';
+      endElapsedS = f.t;
+      break;
+    }
+    if (r.result === 'success') {
+      satisfiedFinal = totalConds;
+      // 1s stability dwell — all conditions held continuously.
+      if (firstAllSatMs === null) firstAllSatMs = f.t * 1000;
+      const dwell = f.t * 1000 - firstAllSatMs;
+      if (dwell >= STABILITY_DWELL_MS_REPLAY) {
+        endStatus = 'success';
+        endElapsedS = f.t;
+        break;
+      }
+    } else {
+      // running — reset dwell, capture progress for fall-through finalize.
+      firstAllSatMs = null;
+      satisfiedFinal = r.satisfied;
+    }
+  }
+
+  // Hard-success gate + final metrics.
+  const satisfiedFrac = totalConds === 0 ? 0 : satisfiedFinal / totalConds;
+  const stepsInOrderFrac = mission.steps.length === 0
+    ? 1
+    : Math.min(1, satisfiedFrac);
+
+  const m = tracker.finalize({
+    hardSuccess: endStatus === 'success',
+    anyFailEverFired,
+    satisfiedFrac,
+    stepsInOrderFrac,
+    elapsedS: endElapsedS,
+    timeLimitS: mission.timeLimitS,
+    parTimeS: mission.parTimeS,
+    optimalPathM,
+    timedOut: endStatus === 'timeout',
+  });
+
+  return {
+    status: endStatus,
+    resultReason: endReason,
+    elapsedS: endElapsedS,
+    anyFailEverFired,
+    metrics: m,
+  };
+}
+
+function collectRelevantIds(conds: Condition[]): Set<string> {
+  const ids = new Set<string>();
+  for (const c of conds) {
+    switch (c.type) {
+      case 'position':
+      case 'orientation':
+      case 'atRest':
+      case 'held':
+        ids.add(c.target); break;
+      case 'stackedOn':
+        ids.add(c.upper); ids.add(c.lower); break;
+      case 'distance':
+        ids.add(c.a); ids.add(c.b); break;
+    }
+  }
+  return ids;
 }
 
 // ─── XP formula ──────────────────────────────────────────────────────────

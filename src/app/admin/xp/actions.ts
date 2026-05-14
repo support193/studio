@@ -10,15 +10,18 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
 export async function saveSettings(formData: FormData) {
-  const pool = parseInt(String(formData.get('pool') ?? ''), 10);
-  const dow  = parseInt(String(formData.get('dow')  ?? ''), 10);
-  if (!Number.isFinite(pool) || pool < 0 || !Number.isFinite(dow) || dow < 0 || dow > 6) {
+  const pool          = parseInt(String(formData.get('pool')           ?? ''), 10);
+  const dow           = parseInt(String(formData.get('dow')            ?? ''), 10);
+  const trajectoryMin = parseInt(String(formData.get('trajectory_min') ?? ''), 10);
+  if (!Number.isFinite(pool) || pool < 0 || !Number.isFinite(dow) || dow < 0 || dow > 6
+      || !Number.isFinite(trajectoryMin) || trajectoryMin < 0 || trajectoryMin > 100) {
     redirect('/admin/xp?error=' + encodeURIComponent('Invalid settings'));
   }
   const supabase = await createClient();
   const { error } = await supabase.rpc('admin_set_xp_settings', {
     p_weekly_pool: pool,
     p_dow: dow,
+    p_trajectory_min: trajectoryMin,
   });
   if (error) {
     redirect('/admin/xp?error=' + encodeURIComponent(error.message));

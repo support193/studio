@@ -30,12 +30,14 @@ import {
   MetricsTracker,
   estimateOptimalPath,
   type EvalMetrics,
+  type TrajectoryFrame,
 } from '@/lib/missions/metrics';
 import type {
   Condition,
   EvalResult,
   GripperState,
   MissionDefinition,
+  Quat,
   Vec3,
 } from '@/lib/missions/types';
 
@@ -74,6 +76,10 @@ export default function MissionPlayer({
   const firstAllSatMsRef = useRef<number | null>(null);
   const optimalPathMRef = useRef<number>(0);
   const finalisedRef = useRef<boolean>(false);
+  // Trajectory frames captured at the 100ms tick — POSTed at finalise so
+  // the server can recompute the canonical score (and optionally archive
+  // the full trajectory in Supabase Storage for downstream BC training).
+  const framesRef = useRef<TrajectoryFrame[]>([]);
 
   // ids of every object referenced in any success condition — used by the
   // metrics tracker to know which contacts/releases to record.
@@ -112,14 +118,32 @@ export default function MissionPlayer({
       const now = Date.now();
       const dt = (now - lastSampleMsRef.current) / 1000;
       lastSampleMsRef.current = now;
+      const handPos = handBody.position as Vec3;
+      const handQuat = handBody.quaternion as Quat;
+      const objects = phys.objectStatesRef.current;
       trackerRef.current.update(
-        handBody.position as Vec3,
+        handPos,
         closed,
-        phys.objectStatesRef.current,
+        objects,
         relevantIds,
         /* failActiveNow */ false,
         dt,
       );
+      // Record the frame for server-side replay.  Snapshot the object
+      // states (the ref array is mutated in place by the physics loop).
+      framesRef.current.push({
+        t: (now - startMsRef.current) / 1000,
+        hand_p: [handPos[0], handPos[1], handPos[2]],
+        hand_q: [handQuat[0], handQuat[1], handQuat[2], handQuat[3]],
+        grip: closed,
+        objs: objects.map((o) => ({
+          id: o.id,
+          p: [o.pos[0], o.pos[1], o.pos[2]],
+          q: [o.quat[0], o.quat[1], o.quat[2], o.quat[3]],
+          lv: [o.linVel[0], o.linVel[1], o.linVel[2]],
+          av: [o.angVel[0], o.angVel[1], o.angVel[2]],
+        })),
+      });
     }, 100);
     return () => clearInterval(id);
   }, [started, mission, relevantIds]);
@@ -202,31 +226,30 @@ export default function MissionPlayer({
     setMetrics(m);
 
     if (logId) {
-      const status = r.result === 'success' ? 'success'
-        : r.result === 'failed' ? 'failed'
-        : 'timeout';
-      const reason = r.result === 'failed' ? r.reason : null;
+      // Server recomputes the canonical score from the frames we recorded;
+      // the locally-computed `m` is just a fast preview shown in the modal
+      // until the server response (if any) overrides it.
       fetch(`/api/missions/log/${logId}/finish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status,
-          resultReason: reason,
           elapsedS: elapsed,
-          sub: m.sub,
-          qualityScore: m.qualityScore,
-          stars: m.stars,
-          flags: m.flags,
-          raw: {
-            pathLengthM:           m.pathLengthM,
-            optimalPathM:          m.raw.optimalPathM,
-            jerkRMS:               m.raw.jerkRMS,
-            gripperToggleCount:    m.raw.gripperToggleCount,
-            velocityReversalCount: m.raw.velocityReversalCount,
-            idleFrameRatio:        m.raw.idleFrameRatio,
-          },
+          frames: framesRef.current,
         }),
-      }).catch(() => { /* network error — score still shown locally */ });
+      })
+        .then((res) => res.ok ? res.json() : null)
+        .then((j) => {
+          if (!j || !j.canonical) return;
+          // Patch the modal with the server-derived numbers.
+          setMetrics((prev) => prev ? {
+            ...prev,
+            qualityScore: j.canonical.qualityScore,
+            stars: j.canonical.stars,
+            sub: j.canonical.sub,
+            flags: j.canonical.flags,
+          } : prev);
+        })
+        .catch(() => { /* network error — local preview stays */ });
     }
   }
 
@@ -241,6 +264,7 @@ export default function MissionPlayer({
     firstAllSatMsRef.current = null;
     finalisedRef.current = false;
     optimalPathMRef.current = 0;
+    framesRef.current = [];
     trackerRef.current.reset();
     controls.resetRef.current = true;
     physRef.current?.resetMissionObjects();

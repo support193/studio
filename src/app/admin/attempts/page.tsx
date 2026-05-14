@@ -26,6 +26,8 @@ interface AttemptRow {
   mission_difficulty: string;
 }
 
+interface TrajectoryPath { id: string; trajectory_path: string | null; }
+
 interface MissionOption { id: string; title: string; }
 interface UserOption    { user_id: string; user_email: string | null; attempt_count: number; }
 
@@ -64,6 +66,16 @@ export default async function AdminAttemptsPage({
   const total = (countRes.data as number | null) ?? 0;
   const missions: MissionOption[] = (missionsRes.data ?? []) as MissionOption[];
   const users:    UserOption[]    = (usersRes.data ?? []) as UserOption[];
+
+  // Look up trajectory presence for the rows on this page.  mission_attempt_logs
+  // is RLS-gated to own/admin; we're admin here so we see all.
+  const ids = rows.map((r) => r.id);
+  const { data: trajRows } = ids.length > 0
+    ? await supabase.from('mission_attempt_logs').select('id, trajectory_path').in('id', ids)
+    : { data: [] as TrajectoryPath[] };
+  const trajectoryMap = new Map<string, string | null>(
+    (trajRows ?? []).map((r) => [r.id, r.trajectory_path]),
+  );
 
   const error = attemptsRes.error?.message ?? countRes.error?.message ?? null;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -149,12 +161,13 @@ export default async function AdminAttemptsPage({
               <Th>Quality</Th>
               <Th>Stars</Th>
               <Th>XP</Th>
+              <Th>Data</Th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center font-manrope text-[13px] text-[#737780]">
+                <td colSpan={9} className="py-12 text-center font-manrope text-[13px] text-[#737780]">
                   No attempts match these filters yet.
                 </td>
               </tr>
@@ -204,6 +217,18 @@ export default async function AdminAttemptsPage({
                   <span className="font-mono text-[12px] text-[#a48dff]">
                     {r.xp_awarded ? `+${r.xp_awarded}` : '—'}
                   </span>
+                </Td>
+                <Td>
+                  {trajectoryMap.get(r.id) ? (
+                    <a
+                      href={`/api/admin/trajectory/${r.id}`}
+                      className="font-manrope text-[12px] text-[#a48dff] hover:underline"
+                    >
+                      Download
+                    </a>
+                  ) : (
+                    <span className="font-manrope text-[11px] text-[#535357]">—</span>
+                  )}
                 </Td>
               </tr>
             ))}

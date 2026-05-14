@@ -16,7 +16,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-interface Settings { weekly_pool_xp: number; distribution_dow: number; updated_at: string; }
+interface Settings { weekly_pool_xp: number; distribution_dow: number; trajectory_min_score: number; updated_at: string; }
 interface PendingWeek {
   week_start: string;
   week_end: string;
@@ -49,7 +49,7 @@ export default async function AdminXpPage({
     { data: pendingRaw },
     { data: historyRaw },
   ] = await Promise.all([
-    supabase.from('xp_settings').select('weekly_pool_xp, distribution_dow, updated_at').eq('id', true).single(),
+    supabase.from('xp_settings').select('weekly_pool_xp, distribution_dow, trajectory_min_score, updated_at').eq('id', true).single(),
     supabase.rpc('admin_pending_weeks'),
     supabase.rpc('admin_list_distributions'),
   ]);
@@ -116,6 +116,19 @@ export default async function AdminXpPage({
               ))}
             </select>
           </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-manrope text-[11px] uppercase tracking-wider text-[#737780]">
+              Save trajectory if quality ≥
+            </span>
+            <input
+              name="trajectory_min"
+              type="number"
+              min={0}
+              max={100}
+              defaultValue={settings?.trajectory_min_score ?? 70}
+              className="w-48 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-mono text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+            />
+          </label>
           <button
             type="submit"
             className="rounded-full border border-[#7C5CFC] bg-[#7C5CFC]/15 px-5 py-2 font-manrope text-[13px] font-medium text-[#a48dff] hover:bg-[#7C5CFC]/25"
@@ -129,7 +142,7 @@ export default async function AdminXpPage({
           )}
         </form>
         <p className="mt-3 font-manrope text-[11px] text-[#535357]">
-          Distribution day is informational — trigger is manual.  At payout time we use the pool value above, even if it changed mid-week.
+          Distribution day is informational — trigger is manual.  At payout time we use the pool value above, even if it changed mid-week.  Trajectory threshold controls which attempts get their full frame log archived in Supabase Storage (lower = keep more, higher = keep only the best).
         </p>
       </section>
 

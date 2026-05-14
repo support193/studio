@@ -1,19 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Bot, ChevronDown, Search } from 'lucide-react';
 import type { HistoryRowDB, LeaderRowDB } from './page';
 
 type TabKey = 'leaderboard' | 'history';
 
+type Grade = 'S' | 'A' | 'B' | 'C' | '—';
+
 interface UserSummary {
   user_id: string;
   total_xp: number;
   weekly_xp: number;
   avg_score: number;
-  grade: 'S' | 'A' | 'B' | 'C';
-  rank: number;
+  grade: Grade;
+  rank: number | null;
   attempts_count: number;
   successes: number;
 }
@@ -29,24 +31,28 @@ interface Props {
 export default function XpStationClient({ signedIn, summary, history, leaders, currentUserId }: Props) {
   const [tab, setTab] = useState<TabKey>('leaderboard');
 
-  // Countdown to the next Monday 00:00 UTC — that's the end of the current
-  // mission-collection week.  Manual distribution happens any time after.
-  const target = useMemo(() => nextMondayUtc(), []);
+  // Countdown to the next Monday 00:00 UTC — recomputes the target if the
+  // user keeps the page open past midnight (instead of stalling at 0/0/0/0).
+  const [target, setTarget] = useState<Date>(() => nextMondayUtc());
   const [now, setNow] = useState<number>(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= target.getTime()) setTarget(nextMondayUtc());
+    }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [target]);
   const remaining = diffParts(target.getTime(), now);
 
   const avgScore = summary?.avg_score ? Number(summary.avg_score) : 0;
-  const grade: 'S' | 'A' | 'B' | 'C' = summary?.grade ?? 'C';
+  const grade: Grade = summary?.grade ?? '—';
   const totalXp = summary?.total_xp ?? 0;
   const weeklyXp = summary?.weekly_xp ?? 0;
   const attempts = summary?.attempts_count ?? 0;
   const successes = summary?.successes ?? 0;
   const successRate = attempts > 0 ? Math.round((successes / attempts) * 100) : 0;
-  const rank = summary?.rank ?? 0;
+  const rank = summary?.rank ?? null;
 
   return (
     <div className="relative mx-auto flex max-w-[1280px] flex-col px-[24px] pb-[80px] pt-[80px]">
@@ -83,7 +89,7 @@ export default function XpStationClient({ signedIn, summary, history, leaders, c
             <Divider />
             <MetricRow label="Success Rate" value={`${successRate}%`} />
             <Divider />
-            <MetricRow label="Rank" value={rank > 0 ? `${rank}` : '—'} />
+            <MetricRow label="Rank" value={rank && rank > 0 ? `${rank}` : '—'} />
           </ActivityCard>
           <ActivityCard>
             <MetricRow label="Total XP"  value={`${totalXp.toLocaleString()} XP`} />
@@ -191,14 +197,15 @@ function Divider() {
 
 // ─── Donut (SVG, grade-driven center) ────────────────────────────────────
 
-const GRADE_COLOR: Record<'S' | 'A' | 'B' | 'C', string> = {
+const GRADE_COLOR: Record<Grade, string> = {
   S: '#70fbdb',
   A: '#3676f8',
   B: '#facc15',
   C: '#7a7b80',
+  '—': '#535357',
 };
 
-function Donut({ score, max, grade }: { score: number; max: number; grade: 'S' | 'A' | 'B' | 'C' }) {
+function Donut({ score, max, grade }: { score: number; max: number; grade: Grade }) {
   const size = 240, stroke = 24;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;

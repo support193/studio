@@ -48,38 +48,47 @@ export default async function XpStationPage() {
   let summary: UserSummary | null = null;
   let history: HistoryRowDB[] = [];
   if (user) {
-    const [{ data: sum }, { data: hist }] = await Promise.all([
+    // Two flat queries are simpler (and safer typing-wise) than a nested
+    // FK select.  Join in JS via a mission_id → mission map.
+    const [{ data: sum }, { data: logs }, { data: missionList }] = await Promise.all([
       supabase.rpc('user_xp_summary', { p_user_id: user.id }).single<UserSummary>(),
       supabase
         .from('mission_attempt_logs')
-        .select(`
-          id, started_at, status, quality_score, stars, xp_awarded,
-          mission:mission_id ( id, title, difficulty )
-        `)
+        .select('id, started_at, status, quality_score, stars, xp_awarded, mission_id')
         .eq('user_id', user.id)
         .order('started_at', { ascending: false })
         .limit(50),
+      supabase
+        .from('missions')
+        .select('id, title, difficulty'),
     ]);
     summary = sum ?? null;
-    history = ((hist ?? []) as unknown as Array<{
+    const missionMap = new Map<string, { id: string; title: string; difficulty: HistoryRowDB['mission_difficulty'] }>();
+    for (const m of (missionList ?? []) as Array<{ id: string; title: string; difficulty: HistoryRowDB['mission_difficulty'] }>) {
+      missionMap.set(m.id, m);
+    }
+    history = ((logs ?? []) as Array<{
       id: string;
       started_at: string;
       status: HistoryRowDB['status'];
       quality_score: number | null;
       stars: number | null;
       xp_awarded: number | null;
-      mission: { id: string; title: string; difficulty: HistoryRowDB['mission_difficulty'] } | null;
-    }>).map((r) => ({
-      id: r.id,
-      started_at: r.started_at,
-      status: r.status,
-      quality_score: r.quality_score,
-      stars: r.stars,
-      xp_awarded: r.xp_awarded,
-      mission_id: r.mission?.id ?? '',
-      mission_title: r.mission?.title ?? '(deleted mission)',
-      mission_difficulty: r.mission?.difficulty ?? 'medium',
-    }));
+      mission_id: string;
+    }>).map((r) => {
+      const m = missionMap.get(r.mission_id);
+      return {
+        id: r.id,
+        started_at: r.started_at,
+        status: r.status,
+        quality_score: r.quality_score,
+        stars: r.stars,
+        xp_awarded: r.xp_awarded,
+        mission_id: r.mission_id,
+        mission_title: m?.title ?? '(deleted mission)',
+        mission_difficulty: m?.difficulty ?? 'medium',
+      };
+    });
   }
 
   // Leaderboard (only for signed-in viewers; anon sees empty state).
