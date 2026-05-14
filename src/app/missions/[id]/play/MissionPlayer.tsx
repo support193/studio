@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   RotateCcw, Trophy, XCircle, Clock, Star, Route, Activity, Play, X,
-  Move, Camera, MousePointer2, MousePointerClick, ZoomIn,
+  MousePointer2, MousePointerClick, ZoomIn, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
 import GripperCamView from '@/components/missions/GripperCamView';
@@ -52,6 +52,7 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
   const [resultDone, setResultDone] = useState<EvalResult | null>(null);
   const [metrics, setMetrics] = useState<EvalMetrics | null>(null);
   const [sensitivity, setSensitivity] = useState(100);
+  const [controlsOpen, setControlsOpen] = useState(true);
 
   const trackerRef = useRef<MetricsTracker>(new MetricsTracker());
   const lastSampleMsRef = useRef<number>(Date.now());
@@ -258,9 +259,26 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
         </section>
       </div>
 
-      {/* ─── Footer: Control help (keyboard + camera + speed) ────────── */}
+      {/* ─── Footer: Control help (keyboard + camera + speed).
+           Collapsible via the chevron at the right of the "Control" header —
+           when closed, only the header row stays so the MuJoCo viewport
+           gets the freed vertical space. ─────────────────────────────── */}
       <footer className="shrink-0 border-t border-[#1a1a1a]">
-        <SectionHeader>Control</SectionHeader>
+        <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-[#1a1a1a] px-[20px] py-[12px]">
+          <span className="font-manrope text-[18px] font-medium leading-[1.4] text-[#f8f9fa]">
+            Control
+          </span>
+          <button
+            type="button"
+            onClick={() => setControlsOpen((v) => !v)}
+            aria-label={controlsOpen ? 'Collapse control panel' : 'Expand control panel'}
+            title={controlsOpen ? 'Collapse' : 'Expand'}
+            className="flex size-[32px] items-center justify-center rounded-[6px] border border-[#1f1f1f] text-[#a8a8b0] transition-colors hover:border-[#7C5CFC] hover:text-white"
+          >
+            {controlsOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
+        </div>
+        {controlsOpen && (
         <div className="flex items-stretch gap-[60px] overflow-x-auto px-[16px] py-[20px]">
           {/* MOVE group */}
           <ControlGroup
@@ -336,6 +354,7 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
             />
           </div>
         </div>
+        )}
       </footer>
 
       {/* ─── Onboarding overlay ────────────────────────────────────────── */}
