@@ -22,7 +22,7 @@ export default async function PlayMissionPage({
 
   const { data, error } = await supabase
     .from('missions')
-    .select('id, title, goal, steps, time_limit_s, max_attempts, objects, success_conditions, fail_conditions')
+    .select('id, title, goal, steps, time_limit_s, par_time_s, difficulty, max_attempts, objects, success_conditions, fail_conditions')
     .eq('id', id)
     .single();
   if (error || !data) notFound();
@@ -41,17 +41,32 @@ export default async function PlayMissionPage({
   }
   void consumed; // currently informational only; HUD reads max from mission
 
+  // Create a fresh attempt-log row.  It stays `status='running'` until the
+  // client posts the final metrics to /api/missions/log/[id]/finish.
+  const { data: log, error: logErr } = await supabase
+    .from('mission_attempt_logs')
+    .insert({ mission_id: id, user_id: user.id })
+    .select('id')
+    .single();
+  if (logErr || !log) {
+    // Logging failure isn't worth blocking the play page over — fall back
+    // to running without a log id (no metrics will be persisted).
+    console.error('mission_attempt_logs insert failed:', logErr);
+  }
+
   const mission: MissionDefinition = {
     id: data.id,
     title: data.title,
     goal: data.goal ?? null,
     steps: data.steps ?? [],
     timeLimitS: data.time_limit_s,
+    parTimeS:   data.par_time_s ?? Math.max(10, Math.floor(data.time_limit_s * 0.4)),
+    difficulty: (data.difficulty ?? 'medium') as 'easy'|'medium'|'hard'|'expert',
     maxAttempts: data.max_attempts ?? 5,
     objects: data.objects ?? [],
     successConditions: data.success_conditions ?? [],
     failConditions: data.fail_conditions ?? [],
   };
 
-  return <MissionPlayer mission={mission} />;
+  return <MissionPlayer mission={mission} logId={log?.id ?? null} />;
 }

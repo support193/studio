@@ -50,6 +50,8 @@ export type Condition =
   /** Distance between two objects' centers `op` than `dist`. */
   | { type: 'distance';    a: string; b: string; op: '<' | '>'; dist: number };
 
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+
 /** Full mission as stored in DB / consumed at runtime. */
 export interface MissionDefinition {
   id: string;
@@ -57,12 +59,23 @@ export interface MissionDefinition {
   goal: string | null;
   steps: string[];
   timeLimitS: number;
+  /** "Par" target time used by time_efficiency sub-metric (>= this fast → full points). */
+  parTimeS: number;
+  difficulty: Difficulty;
   /** Max number of times any single user is allowed to enter the player. */
   maxAttempts: number;
   objects: MissionObject[];
   successConditions: Condition[];   // AND — all must hold
   failConditions: Condition[];      // OR — any one fails the run
 }
+
+/** XP base reward per difficulty, used by the post-run scoring pipeline. */
+export const XP_BASE: Record<Difficulty, number> = {
+  easy:   50,
+  medium: 100,
+  hard:   200,
+  expert: 400,
+};
 
 // ─── Runtime state (player → evaluator) ───────────────────────────────────
 

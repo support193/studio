@@ -11,11 +11,11 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  RotateCcw, Trophy, XCircle, Clock, Star, Route, Activity, Play, X,
+  RotateCcw, Trophy, XCircle, Clock, Star, Play, X, Sparkles,
   MousePointer2, MousePointerClick, ZoomIn, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
@@ -26,16 +26,30 @@ import type {
   PandaV3PhysicsHandle,
 } from '@/hooks/useMujocoPhysicsPandaV3';
 import { evaluateMission } from '@/lib/missions/evaluator';
-import { MetricsTracker, type EvalMetrics } from '@/lib/missions/metrics';
+import {
+  MetricsTracker,
+  estimateOptimalPath,
+  type EvalMetrics,
+} from '@/lib/missions/metrics';
 import type {
+  Condition,
   EvalResult,
   GripperState,
   MissionDefinition,
+  Vec3,
 } from '@/lib/missions/types';
+
+const STABILITY_DWELL_MS = 1000;
 
 const ONBOARDING_KEY = 'zeno-mission-tutorial-seen';
 
-export default function MissionPlayer({ mission }: { mission: MissionDefinition }) {
+export default function MissionPlayer({
+  mission,
+  logId,
+}: {
+  mission: MissionDefinition;
+  logId: string | null;
+}) {
   const router = useRouter();
   const controls = usePandaV3Controls();
   const frameDataRef = useRef<PandaV3FrameSnapshot | null>(null);
@@ -49,13 +63,22 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [elapsedS, setElapsedS] = useState(0);
   const [evalRes, setEvalRes] = useState<EvalResult>({ result: 'running', satisfied: 0, total: mission.successConditions.length });
+  const [stabilizing, setStabilizing] = useState(false);
   const [resultDone, setResultDone] = useState<EvalResult | null>(null);
   const [metrics, setMetrics] = useState<EvalMetrics | null>(null);
+  const [awardedXp, setAwardedXp] = useState<number | null>(null);
   const [sensitivity, setSensitivity] = useState(100);
   const [controlsOpen, setControlsOpen] = useState(true);
 
   const trackerRef = useRef<MetricsTracker>(new MetricsTracker());
   const lastSampleMsRef = useRef<number>(Date.now());
+  const firstAllSatMsRef = useRef<number | null>(null);
+  const optimalPathMRef = useRef<number>(0);
+  const finalisedRef = useRef<boolean>(false);
+
+  // ids of every object referenced in any success condition — used by the
+  // metrics tracker to know which contacts/releases to record.
+  const relevantIds = useMemo(() => collectConditionIds(mission.successConditions), [mission]);
 
   // Onboarding gate: localStorage check.  SSR-safe.
   useEffect(() => {
@@ -70,26 +93,42 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
     }
   }, []);
 
-  // 100ms gripper sampling — only after the timer has actually started.
+  // 100ms tracker update.  Runs only after the timer is live.
   useEffect(() => {
     const id = setInterval(() => {
-      if (!started) return;
+      if (!started || finalisedRef.current) return;
       const phys = physRef.current;
       if (!phys || !phys.state.loaded) return;
       const handBody = phys.bodiesRef.current.find((b) => b.name === 'hand');
       if (!handBody) return;
+
+      // Lazily capture optimal-path estimate on first valid tick.
+      if (optimalPathMRef.current === 0) {
+        optimalPathMRef.current = estimateOptimalPath(mission, handBody.position as Vec3);
+      }
+
+      const fd = frameDataRef.current;
+      const closed = fd ? Math.max(0, Math.min(1, fd.gripper_cmd / 255)) : 0;
+
       const now = Date.now();
       const dt = (now - lastSampleMsRef.current) / 1000;
       lastSampleMsRef.current = now;
-      trackerRef.current.update(handBody.position, dt);
+      trackerRef.current.update(
+        handBody.position as Vec3,
+        closed,
+        phys.objectStatesRef.current,
+        relevantIds,
+        /* failActiveNow */ false,
+        dt,
+      );
     }, 100);
     return () => clearInterval(id);
-  }, [started]);
+  }, [started, mission, relevantIds]);
 
-  // 1Hz timer + evaluator.
+  // 1Hz evaluator + dwell-aware result handling.
   useEffect(() => {
     const id = setInterval(() => {
-      if (!started) return;
+      if (!started || finalisedRef.current) return;
       const elapsed = (Date.now() - startMsRef.current) / 1000;
       setElapsedS(elapsed);
 
@@ -106,23 +145,107 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
 
       const r = evaluateMission(mission, phys.objectStatesRef.current, gripper, elapsed);
       setEvalRes(r);
-      if (r.result !== 'running') {
-        setResultDone(r);
-        if (r.result === 'success') {
-          setMetrics(trackerRef.current.finalize(r.elapsedS, mission.timeLimitS));
+
+      if (r.result === 'success') {
+        // Stability dwell: all conditions met, but only count as success
+        // once they've held continuously for STABILITY_DWELL_MS.
+        if (firstAllSatMsRef.current === null) firstAllSatMsRef.current = Date.now();
+        const dwell = Date.now() - firstAllSatMsRef.current;
+        if (dwell >= STABILITY_DWELL_MS) {
+          setStabilizing(false);
+          finaliseRun(r);
+        } else {
+          setStabilizing(true);
         }
+      } else if (r.result === 'failed' || r.result === 'timeout') {
+        firstAllSatMsRef.current = null;
+        setStabilizing(false);
+        finaliseRun(r);
+      } else {
+        // back to running — reset dwell.
+        firstAllSatMsRef.current = null;
+        setStabilizing(false);
       }
     }, 1000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mission, started]);
+
+  // Finalise an episode: compute metrics, POST to logger, surface in modal.
+  function finaliseRun(r: EvalResult) {
+    if (finalisedRef.current) return;
+    finalisedRef.current = true;
+    setResultDone(r);
+
+    const total = mission.successConditions.length;
+    const satisfiedFrac = r.result === 'success'
+      ? 1
+      : r.result === 'running'
+      ? (total === 0 ? 0 : r.satisfied / total)
+      : 0;
+    const stepsInOrderFrac = mission.steps.length === 0
+      ? 1
+      : Math.min(1, satisfiedFrac);
+
+    const elapsed = r.result === 'success' ? r.elapsedS : elapsedS;
+
+    const m = trackerRef.current.finalize({
+      hardSuccess: r.result === 'success',
+      anyFailEverFired: r.result === 'failed',
+      satisfiedFrac,
+      stepsInOrderFrac,
+      elapsedS: elapsed,
+      timeLimitS: mission.timeLimitS,
+      parTimeS: mission.parTimeS,
+      optimalPathM: optimalPathMRef.current,
+      timedOut: r.result === 'timeout',
+    });
+    setMetrics(m);
+
+    if (logId) {
+      const status = r.result === 'success' ? 'success'
+        : r.result === 'failed' ? 'failed'
+        : 'timeout';
+      const reason = r.result === 'failed' ? r.reason : null;
+      fetch(`/api/missions/log/${logId}/finish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          resultReason: reason,
+          elapsedS: elapsed,
+          sub: m.sub,
+          qualityScore: m.qualityScore,
+          stars: m.stars,
+          flags: m.flags,
+          raw: {
+            pathLengthM:           m.pathLengthM,
+            optimalPathM:          m.raw.optimalPathM,
+            jerkRMS:               m.raw.jerkRMS,
+            gripperToggleCount:    m.raw.gripperToggleCount,
+            velocityReversalCount: m.raw.velocityReversalCount,
+            idleFrameRatio:        m.raw.idleFrameRatio,
+          },
+        }),
+      })
+        .then((res) => res.ok ? res.json() : null)
+        .then((j) => { if (j && typeof j.xp === 'number') setAwardedXp(j.xp); })
+        .catch(() => { /* network error — XP simply won't display */ });
+    }
+  }
 
   const handleReset = useCallback(() => {
     setResultDone(null);
     setMetrics(null);
+    setAwardedXp(null);
+    setStabilizing(false);
     setElapsedS(0);
     setEvalRes({ result: 'running', satisfied: 0, total: mission.successConditions.length });
     startMsRef.current = Date.now();
     lastSampleMsRef.current = Date.now();
+    firstAllSatMsRef.current = null;
+    finalisedRef.current = false;
+    optimalPathMRef.current = 0;
     trackerRef.current.reset();
     controls.resetRef.current = true;
     physRef.current?.resetMissionObjects();
@@ -420,56 +543,86 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
         </div>
       )}
 
+      {/* ─── Stabilizing pill (visible during the 1s dwell after all conds hit) ─── */}
+      {stabilizing && !resultDone && (
+        <div className="absolute left-1/2 top-[120px] z-20 -translate-x-1/2 rounded-full border border-[#7C5CFC] bg-[#7C5CFC]/15 px-4 py-1.5 backdrop-blur">
+          <span className="font-manrope text-[12px] font-semibold uppercase tracking-wider text-[#a48dff]">
+            Stabilizing… hold still
+          </span>
+        </div>
+      )}
+
       {/* ─── Result modal ──────────────────────────────────────────────── */}
       {resultDone && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="w-[420px] rounded-[12px] border border-[#1f1f1f] bg-[#0A0A0F] p-6 text-center">
-            {resultDone.result === 'success' ? (
-              <>
-                <Trophy className="mx-auto mb-3 text-[#FACC15]" size={48} />
-                <div className="font-manrope text-[24px] font-semibold text-white">Mission complete</div>
-                {metrics && (
-                  <>
-                    <div className="mt-3 flex items-center justify-center gap-1">
-                      {[1, 2, 3].map((i) => (
-                        <Star
-                          key={i}
-                          size={28}
-                          className={i <= metrics.stars ? 'text-[#FACC15]' : 'text-[#2a2a35]'}
-                          fill={i <= metrics.stars ? '#FACC15' : 'none'}
-                        />
-                      ))}
-                    </div>
-                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-[8px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-3">
-                      <MetricCell icon={<Clock size={12} />} label="Time" value={`${metrics.elapsedS.toFixed(1)}s`} />
-                      <MetricCell icon={<Route size={12} />} label="Path" value={`${metrics.pathLengthM.toFixed(2)}m`} />
-                      <MetricCell icon={<Activity size={12} />} label="Smooth" value={`${(metrics.smoothnessScore * 100).toFixed(0)}`} />
-                    </div>
-                  </>
-                )}
-                {!metrics && (
-                  <div className="mt-1 font-mono text-[14px] text-[#a8a8b0]">
-                    Time: {formatTime(resultDone.elapsedS)}
+          <div className="w-[460px] rounded-[12px] border border-[#1f1f1f] bg-[#0A0A0F] p-6">
+            {/* Headline */}
+            <div className="text-center">
+              {resultDone.result === 'success' ? (
+                <>
+                  <Trophy className="mx-auto mb-3 text-[#FACC15]" size={48} />
+                  <div className="font-manrope text-[24px] font-semibold text-white">Mission complete</div>
+                </>
+              ) : resultDone.result === 'timeout' ? (
+                <>
+                  <Clock className="mx-auto mb-3 text-[#737780]" size={48} />
+                  <div className="font-manrope text-[24px] font-semibold text-white">Time up</div>
+                  <div className="mt-1 font-manrope text-[13px] text-[#a8a8b0]">
+                    Could not finish within {formatTime(mission.timeLimitS)}.
                   </div>
-                )}
-              </>
-            ) : resultDone.result === 'timeout' ? (
+                </>
+              ) : resultDone.result === 'failed' ? (
+                <>
+                  <XCircle className="mx-auto mb-3 text-red-400" size={48} />
+                  <div className="font-manrope text-[24px] font-semibold text-white">Mission failed</div>
+                  <div className="mt-1 font-manrope text-[13px] text-[#a8a8b0]">
+                    {resultDone.reason}
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Quality breakdown */}
+            {metrics && (
               <>
-                <Clock className="mx-auto mb-3 text-[#737780]" size={48} />
-                <div className="font-manrope text-[24px] font-semibold text-white">Time up</div>
-                <div className="mt-1 font-manrope text-[13px] text-[#a8a8b0]">
-                  Could not finish within {formatTime(mission.timeLimitS)}.
+                <div className="mt-4 flex items-center justify-center gap-1">
+                  {[1, 2, 3].map((i) => (
+                    <Star
+                      key={i}
+                      size={28}
+                      className={i <= metrics.stars ? 'text-[#FACC15]' : 'text-[#2a2a35]'}
+                      fill={i <= metrics.stars ? '#FACC15' : 'none'}
+                    />
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-center gap-4">
+                  <div className="text-center">
+                    <div className="font-manrope text-[10px] uppercase tracking-wider text-[#737780]">Quality</div>
+                    <div className="font-manrope text-[28px] font-semibold text-white">{metrics.qualityScore}</div>
+                  </div>
+                  {awardedXp !== null && (
+                    <div className="text-center">
+                      <div className="font-manrope text-[10px] uppercase tracking-wider text-[#737780]">XP</div>
+                      <div className="flex items-center gap-1 font-manrope text-[28px] font-semibold text-[#a48dff]">
+                        <Sparkles size={20} />+{awardedXp}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 flex flex-col gap-1.5 rounded-[8px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-3">
+                  <SubMetricBar label="Task"       value={metrics.sub.task_completion} />
+                  <SubMetricBar label="Time"       value={metrics.sub.time_efficiency} />
+                  <SubMetricBar label="Path"       value={metrics.sub.path_efficiency} />
+                  <SubMetricBar label="Smoothness" value={metrics.sub.smoothness} />
+                  <SubMetricBar label="Stability"  value={metrics.sub.stability} />
+                  <SubMetricBar label="Economy"    value={metrics.sub.economy} />
+                </div>
+                <div className="mt-2 font-manrope text-[10px] text-[#535357]">
+                  Time {metrics.elapsedS.toFixed(1)}s · Path {metrics.pathLengthM.toFixed(2)}m · Toggles {metrics.raw.gripperToggleCount}
                 </div>
               </>
-            ) : resultDone.result === 'failed' ? (
-              <>
-                <XCircle className="mx-auto mb-3 text-red-400" size={48} />
-                <div className="font-manrope text-[24px] font-semibold text-white">Mission failed</div>
-                <div className="mt-1 font-manrope text-[13px] text-[#a8a8b0]">
-                  {resultDone.reason}
-                </div>
-              </>
-            ) : null}
+            )}
+
             <div className="mt-6 flex justify-center gap-3">
               <Link
                 href="/missions"
@@ -694,5 +847,41 @@ function MiniKeys({ keys }: { keys: string[] }) {
 function MiniAction({ children }: { children: React.ReactNode }) {
   return (
     <span className="self-center font-manrope text-[11px] text-[#a8a8b0]">{children}</span>
+  );
+}
+
+function collectConditionIds(conds: Condition[]): Set<string> {
+  const ids = new Set<string>();
+  for (const c of conds) {
+    switch (c.type) {
+      case 'position':
+      case 'orientation':
+      case 'atRest':
+      case 'held':
+        ids.add(c.target); break;
+      case 'stackedOn':
+        ids.add(c.upper); ids.add(c.lower); break;
+      case 'distance':
+        ids.add(c.a); ids.add(c.b); break;
+    }
+  }
+  return ids;
+}
+
+function SubMetricBar({ label, value }: { label: string; value: number }) {
+  const pct = Math.max(0, Math.min(1, value));
+  const color = pct >= 0.8 ? '#22c55e' : pct >= 0.55 ? '#facc15' : '#7C5CFC';
+  return (
+    <div className="flex items-center gap-[8px]">
+      <span className="w-[78px] shrink-0 font-manrope text-[10px] uppercase tracking-wider text-[#737780]">
+        {label}
+      </span>
+      <div className="relative h-[6px] flex-1 overflow-hidden rounded-full bg-[rgba(248,249,250,0.06)]">
+        <div className="absolute inset-y-0 left-0 transition-all" style={{ width: `${pct * 100}%`, backgroundColor: color }} />
+      </div>
+      <span className="w-[34px] shrink-0 text-right font-mono text-[10px] text-[#a8a8b0]">
+        {Math.round(pct * 100)}
+      </span>
+    </div>
   );
 }

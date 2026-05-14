@@ -11,6 +11,7 @@ import {
   defaultCondition,
   defaultObject,
   type Condition,
+  type Difficulty,
   type MissionObject,
   type ObjectType,
 } from '@/lib/missions/types';
@@ -24,6 +25,8 @@ export interface MissionFormValues {
   goal: string;
   steps: string[];
   timeLimitS: number;
+  parTimeS: number;
+  difficulty: Difficulty;
   maxAttempts: number;
   objects: MissionObject[];
   successConditions: Condition[];
@@ -42,6 +45,8 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
     initial?.steps && initial.steps.length > 0 ? initial.steps : [''],
   );
   const [timeLimit, setTimeLimit] = useState(initial?.timeLimitS ?? 300);
+  const [parTime, setParTime] = useState(initial?.parTimeS ?? 60);
+  const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? 'medium');
   const [maxAttempts, setMaxAttempts] = useState(initial?.maxAttempts ?? 5);
   const [objects, setObjects] = useState<MissionObject[]>(initial?.objects ?? []);
   const [successConds, setSuccessConds] = useState<Condition[]>(initial?.successConditions ?? []);
@@ -75,6 +80,8 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
       goal: goal.trim() || null,
       steps: cleanSteps,
       time_limit_s: Math.max(1, timeLimit),
+      par_time_s:   Math.max(1, parTime),
+      difficulty,
       max_attempts: Math.max(1, maxAttempts),
       objects: objects,
       success_conditions: successConds,
@@ -200,6 +207,36 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
                 className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
               />
               <span className="font-manrope text-[12px] text-[#737780]">tries / user</span>
+            </div>
+          </Field>
+          <Field label="Par time" hint="Target time (sec) used for the time-efficiency score. Finishing at or under par scores 100%.">
+            <div className="flex items-center gap-2">
+              <input
+                type="number" min={1} max={36000}
+                value={parTime}
+                onChange={(e) => setParTime(parseInt(e.target.value) || 0)}
+                className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+              />
+              <span className="font-manrope text-[12px] text-[#737780]">sec (≈ 40% of time limit is typical)</span>
+            </div>
+          </Field>
+          <Field label="Difficulty" hint="Drives the XP base reward (easy 50 / medium 100 / hard 200 / expert 400).">
+            <div className="flex gap-2">
+              {(['easy','medium','hard','expert'] as Difficulty[]).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDifficulty(d)}
+                  className={[
+                    'rounded-full border px-4 py-1.5 font-manrope text-[12px] font-medium capitalize',
+                    difficulty === d
+                      ? 'border-[#7C5CFC] bg-[#7C5CFC]/15 text-[#f8f9fa]'
+                      : 'border-[#1f1f1f] text-[#737780] hover:text-[#f8f9fa]',
+                  ].join(' ')}
+                >
+                  {d}
+                </button>
+              ))}
             </div>
           </Field>
         </>

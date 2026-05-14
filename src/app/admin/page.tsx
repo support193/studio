@@ -1,7 +1,7 @@
 // Admin home — mission list + "New mission" CTA.
 
 import Link from 'next/link';
-import { Plus, Clock, ListChecks, Play } from 'lucide-react';
+import { Plus, Clock, ListChecks, Play, BarChart3 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -33,13 +33,22 @@ export default async function AdminHomePage() {
             Author and edit missions for the Studio.
           </p>
         </div>
-        <Link
-          href="/admin/missions/new"
-          className="flex items-center gap-2 rounded-full border border-[#040404] bg-[rgba(248,249,250,0.06)] px-4 py-2 font-manrope text-[13px] text-[#f8f9fa] hover:bg-[rgba(248,249,250,0.1)]"
-        >
-          <Plus size={16} strokeWidth={1.75} />
-          New mission
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/attempts"
+            className="flex items-center gap-2 rounded-full border border-[#1f1f1f] px-4 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:border-[#7C5CFC] hover:text-white"
+          >
+            <BarChart3 size={16} strokeWidth={1.75} />
+            User attempts
+          </Link>
+          <Link
+            href="/admin/missions/new"
+            className="flex items-center gap-2 rounded-full border border-[#040404] bg-[rgba(248,249,250,0.06)] px-4 py-2 font-manrope text-[13px] text-[#f8f9fa] hover:bg-[rgba(248,249,250,0.1)]"
+          >
+            <Plus size={16} strokeWidth={1.75} />
+            New mission
+          </Link>
+        </div>
       </div>
 
       {error && (
