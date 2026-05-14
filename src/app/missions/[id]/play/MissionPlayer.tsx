@@ -260,26 +260,23 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
       </div>
 
       {/* ─── Footer: Control help (keyboard + camera + speed).
-           Collapsible via the chevron at the right of the "Control" header —
-           when closed, only the header row stays so the MuJoCo viewport
-           gets the freed vertical space. ─────────────────────────────── */}
-      <footer className="shrink-0 border-t border-[#1a1a1a]">
-        <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-[#1a1a1a] px-[20px] py-[12px]">
-          <span className="font-manrope text-[18px] font-medium leading-[1.4] text-[#f8f9fa]">
-            Control
-          </span>
-          <button
-            type="button"
-            onClick={() => setControlsOpen((v) => !v)}
-            aria-label={controlsOpen ? 'Collapse control panel' : 'Expand control panel'}
-            title={controlsOpen ? 'Collapse' : 'Expand'}
-            className="flex size-[32px] items-center justify-center rounded-[6px] border border-[#1f1f1f] text-[#a8a8b0] transition-colors hover:border-[#7C5CFC] hover:text-white"
-          >
-            {controlsOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-          </button>
-        </div>
-        {controlsOpen && (
-        <div className="flex items-stretch gap-[60px] overflow-x-auto px-[16px] py-[20px]">
+           The 56px header bar is always present; viewport sizing is fixed
+           to that closed state.  The expanded content sits on an absolute
+           panel that slides up OVER the viewport (no reflow), animated via
+           translate-y for a smooth open/close. ─────────────────────────── */}
+      <footer className="relative shrink-0 h-[56px]">
+        {/* Sliding panel — sits above the always-visible header.  When
+            closed, it's translated below itself and clipped by the player
+            root's overflow-hidden. */}
+        <div
+          className={[
+            'absolute bottom-[56px] left-0 right-0 z-0 border-t border-[#1a1a1a] bg-[#030303] shadow-[0_-12px_24px_-12px_rgba(0,0,0,0.6)]',
+            'transition-transform duration-300 ease-out',
+            controlsOpen ? 'translate-y-0' : 'pointer-events-none translate-y-full',
+          ].join(' ')}
+          aria-hidden={!controlsOpen}
+        >
+          <div className="flex items-stretch gap-[60px] overflow-x-auto px-[16px] py-[20px]">
           {/* MOVE group */}
           <ControlGroup
             badgeLabel="Move"
@@ -353,8 +350,25 @@ export default function MissionPlayer({ mission }: { mission: MissionDefinition 
               className="w-[140px] accent-[#7C5CFC]"
             />
           </div>
+          </div>
         </div>
-        )}
+
+        {/* Always-visible header bar — "Control" label + toggle pressed
+            directly to its right. */}
+        <div className="absolute inset-0 z-10 flex items-center gap-[8px] border-t border-[#1a1a1a] bg-[#030303] px-[20px]">
+          <span className="font-manrope text-[18px] font-medium leading-[1.4] text-[#f8f9fa]">
+            Control
+          </span>
+          <button
+            type="button"
+            onClick={() => setControlsOpen((v) => !v)}
+            aria-label={controlsOpen ? 'Collapse control panel' : 'Expand control panel'}
+            title={controlsOpen ? 'Collapse' : 'Expand'}
+            className="flex size-[28px] items-center justify-center rounded-[6px] border border-[#1f1f1f] text-[#a8a8b0] transition-colors hover:border-[#7C5CFC] hover:text-white"
+          >
+            {controlsOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
+        </div>
       </footer>
 
       {/* ─── Onboarding overlay ────────────────────────────────────────── */}
