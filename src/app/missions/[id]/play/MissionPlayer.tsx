@@ -63,6 +63,10 @@ export default function MissionPlayer({
   const [stabilizing, setStabilizing] = useState(false);
   const [resultDone, setResultDone] = useState<EvalResult | null>(null);
   const [metrics, setMetrics] = useState<EvalMetrics | null>(null);
+  // True once the server canonical numbers have patched the modal.  Stability
+  // is server-only, so its bar stays hidden until this flips (avoids showing
+  // a meaningless 0 from the client preview).
+  const [canonicalApplied, setCanonicalApplied] = useState(false);
   const [sensitivity, setSensitivity] = useState(100);
   const [controlsOpen, setControlsOpen] = useState(true);
 
@@ -210,6 +214,7 @@ export default function MissionPlayer({
       timedOut: r.result === 'timeout',
     });
     setMetrics(m);
+    setCanonicalApplied(false);
 
     if (logId) {
       // Server recomputes the canonical score from the frames we recorded;
@@ -234,6 +239,7 @@ export default function MissionPlayer({
             sub: j.canonical.sub,
             flags: j.canonical.flags,
           } : prev);
+          setCanonicalApplied(true);
         })
         .catch(() => { /* network error — local preview stays */ });
     }
@@ -244,6 +250,7 @@ export default function MissionPlayer({
     // running — startMsRef/elapsedS are intentionally left untouched.
     setResultDone(null);
     setMetrics(null);
+    setCanonicalApplied(false);
     setStabilizing(false);
     setEvalRes({ result: 'running', satisfied: 0, total: mission.successConditions.length });
     lastSampleMsRef.current = Date.now();
@@ -574,12 +581,12 @@ export default function MissionPlayer({
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-1.5 rounded-[8px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-3">
-                  <SubMetricBar label="Task"       value={metrics.sub.task_completion} />
-                  <SubMetricBar label="Time"       value={metrics.sub.time_efficiency} />
-                  <SubMetricBar label="Path"       value={metrics.sub.path_efficiency} />
-                  <SubMetricBar label="Smoothness" value={metrics.sub.smoothness} />
-                  <SubMetricBar label="Stability"  value={metrics.sub.stability} />
-                  <SubMetricBar label="Economy"    value={metrics.sub.economy} />
+                  <SubMetricBar label="Time"      value={metrics.sub.time_efficiency} />
+                  <SubMetricBar label="Path"      value={metrics.sub.path_efficiency} />
+                  {canonicalApplied && (
+                    <SubMetricBar label="Stability" value={metrics.sub.stability} />
+                  )}
+                  <SubMetricBar label="Economy"   value={metrics.sub.economy} />
                 </div>
                 <div className="mt-2 font-manrope text-[10px] text-[#535357]">
                   Time {metrics.elapsedS.toFixed(1)}s · Path {metrics.pathLengthM.toFixed(2)}m · Toggles {metrics.raw.gripperToggleCount}

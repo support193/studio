@@ -57,7 +57,7 @@ export function evaluateMission(
 
 // ─── Condition checks ─────────────────────────────────────────────────────
 
-function checkCondition(c: Condition, objs: Map<string, ObjectState>, gripper: GripperState): boolean {
+export function checkCondition(c: Condition, objs: Map<string, ObjectState>, gripper: GripperState): boolean {
   switch (c.type) {
     case 'position': {
       const o = objs.get(c.target);

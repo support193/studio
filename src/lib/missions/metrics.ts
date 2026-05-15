@@ -22,13 +22,14 @@
 import type {
   Condition,
   Difficulty,
+  GripperState,
   MissionDefinition,
   ObjectState,
   Quat,
   Vec3,
 } from './types';
 import { XP_BASE } from './types';
-import { evaluateMission } from './evaluator';
+import { evaluateMission, checkCondition } from './evaluator';
 
 // ─── Trajectory recording format (v1) ────────────────────────────────────
 //
@@ -127,6 +128,13 @@ export interface FinalizeInput {
   optimalPathM: number;
   /** Did the run hit timeLimit?  Player passes this in (it has the result type). */
   timedOut: boolean;
+  /**
+   * Placement stability 0..1, computed by the server replay over the settle
+   * window.  Undefined for the client preview and for missions with no
+   * object-referencing success conditions — when undefined, stability is
+   * excluded from the quality score and the remaining weights renormalise.
+   */
+  stability?: number;
 }
 
 // ─── Tracker ─────────────────────────────────────────────────────────────
@@ -319,7 +327,7 @@ export class MetricsTracker {
 
   /** Finalise with the player-supplied summary state. */
   finalize(input: FinalizeInput): EvalMetrics {
-    const { elapsedS, timeLimitS, parTimeS, optimalPathM, hardSuccess, anyFailEverFired,
+    const { elapsedS, timeLimitS, optimalPathM, hardSuccess, anyFailEverFired,
             satisfiedFrac, stepsInOrderFrac, timedOut } = input;
 
     const meanSpeed = this.pathLength / Math.max(0.01, elapsedS);
@@ -333,12 +341,12 @@ export class MetricsTracker {
     // ── 6 sub-metrics ──────────────────────────────────────────────────
     const task_completion = clamp01(0.7 * satisfiedFrac + 0.3 * stepsInOrderFrac);
 
-    // time_efficiency: full 1.0 if finished within parTime; 0 at timeLimit.
-    const time_efficiency = elapsedS <= parTimeS
-      ? 1
-      : elapsedS >= timeLimitS
-      ? 0
-      : 1 - (elapsedS - parTimeS) / Math.max(1, timeLimitS - parTimeS);
+    // time_efficiency: floor 0.5, plus up to 0.5 scaled by the fraction of
+    // the time budget left.  Finish instantly → ~1.0; use the whole limit →
+    // 0.5 (the floor).  parTimeS is intentionally no longer used.
+    const time_efficiency = clamp01(
+      Math.max(0.5, 0.5 + 0.5 * (timeLimitS - elapsedS) / Math.max(1, timeLimitS)),
+    );
 
     // path_efficiency: optimal/actual, capped 1.  If we never got an
     // optimal estimate (e.g. no position conds) we default to 0.5 which
@@ -347,8 +355,13 @@ export class MetricsTracker {
       ? 0
       : clamp01(optimalPathM > 0 ? optimalPathM / this.pathLength : 0.5);
 
-    // stability: dwell after release, capped at 2s = full points.
-    const stability = clamp01(this.stabilityDwellMs / 2000);
+    // stability: server replay computes placement steadiness from the
+    // recorded trajectory (object stayed in its target, at rest, after it
+    // first arrived).  Undefined → not measurable here (client preview, or
+    // no object-referencing success conditions) → excluded from the score.
+    // typeof is inlined (not via the alias) so TS narrows away `undefined`.
+    const stability = typeof input.stability === 'number' ? clamp01(input.stability) : 0;
+    const stabilityApplicable = typeof input.stability === 'number';
 
     // economy: penalise toggles + reversals.  ~30 combined events = 0.
     const economyScore = (this.gripperToggleCount + 0.5 * this.velocityReversalCount) / 30;
@@ -364,15 +377,23 @@ export class MetricsTracker {
     };
 
     // ── quality score 0..100 ───────────────────────────────────────────
+    // task_completion + smoothness are still computed & stored (DB / raw)
+    // but excluded from the score: task is ~always 1 on a completed run, and
+    // smoothness is not measurable under keyboard control.
     const gatePass = hardSuccess && !anyFailEverFired && this.touchedAnyObject;
-    const qualityRaw = 100 * (
-      0.35 * sub.task_completion +
-      0.20 * sub.time_efficiency +
-      0.15 * sub.path_efficiency +
-      0.15 * sub.smoothness +
-      0.10 * sub.stability +
-      0.05 * sub.economy
-    );
+    const qualityRaw = stabilityApplicable
+      ? 100 * (
+          0.40 * sub.time_efficiency +
+          0.30 * sub.path_efficiency +
+          0.20 * sub.stability +
+          0.10 * sub.economy
+        )
+      // stability excluded → renormalise over the remaining three.
+      : 100 * (
+          0.500 * sub.time_efficiency +
+          0.375 * sub.path_efficiency +
+          0.125 * sub.economy
+        );
     const qualityScore = gatePass ? Math.round(qualityRaw) : 0;
 
     // ── star tiers ─────────────────────────────────────────────────────
@@ -429,6 +450,68 @@ export class MetricsTracker {
 
 const STABILITY_DWELL_MS_REPLAY = 1000;
 
+// "At rest" thresholds for the placed object during the settle window.
+// Tunable — calibrated from a quiet placement vs. a rolling/teetering one.
+const STAB_LIN_VEL_THRESH = 0.05;   // m/s
+const STAB_ANG_VEL_THRESH = 0.5;    // rad/s
+
+/**
+ * Placement stability over the settle window: from the first frame of the
+ * satisfied stretch that led to completion (`winStartIdx`) through the end,
+ * the fraction of frames each success condition stayed satisfied AND its
+ * object(s) were at rest.  `held` / `atRest` only require the predicate to
+ * stay true (object didn't leave the gripper / kept still).  Averaged across
+ * all success conditions.  Undefined if there are no success conditions.
+ */
+function computeReplayStability(
+  mission: MissionDefinition,
+  frames: TrajectoryFrame[],
+  winStartIdx: number,
+  winEndIdx: number,
+): number | undefined {
+  const conds = mission.successConditions;
+  if (conds.length === 0) return undefined;
+  const win = frames.slice(winStartIdx, winEndIdx + 1);
+  if (win.length === 0) return undefined;
+
+  const perCond = conds.map((c) => {
+    let stable = 0;
+    for (const f of win) {
+      const objs: ObjectState[] = f.objs.map((o) => ({
+        id: o.id, pos: o.p, quat: o.q, linVel: o.lv, angVel: o.av,
+      }));
+      const objMap = new Map(objs.map((o) => [o.id, o]));
+      const gripper: GripperState = { closed: f.grip, pos: f.hand_p };
+      if (!checkCondition(c, objMap, gripper)) continue;
+      // held / atRest predicates already imply "steady"; others additionally
+      // require the referenced object(s) to be at rest.
+      if (c.type === 'held' || c.type === 'atRest' || condObjectsAtRest(c, objMap)) {
+        stable++;
+      }
+    }
+    return stable / win.length;
+  });
+
+  return perCond.reduce((a, b) => a + b, 0) / perCond.length;
+}
+
+function condObjectsAtRest(c: Condition, objs: Map<string, ObjectState>): boolean {
+  const ids: string[] =
+    c.type === 'position' || c.type === 'orientation' ? [c.target]
+    // a stack is only "settled" if the base is also at rest (matches the
+    // distance / collectRelevantIds treatment of stackedOn).
+    : c.type === 'stackedOn' ? [c.upper, c.lower]
+    : c.type === 'distance' ? [c.a, c.b]
+    : [];
+  for (const id of ids) {
+    const o = objs.get(id);
+    if (!o) return false;
+    if (v3Norm(o.linVel) >= STAB_LIN_VEL_THRESH) return false;
+    if (v3Norm(o.angVel) >= STAB_ANG_VEL_THRESH) return false;
+  }
+  return true;
+}
+
 export interface ReplayResult {
   status: 'success' | 'failed' | 'timeout' | 'abandoned';
   resultReason: string | null;
@@ -468,6 +551,10 @@ export function replayEpisode(
 
   let prevT = frames[0].t;
   let firstAllSatMs: number | null = null;
+  // Frame index range of the satisfied stretch that led to completion —
+  // the stability "settle window" [winStartIdx, winEndIdx].
+  let winStartIdx = -1;
+  let winEndIdx = -1;
   let anyFailEverFired = false;
   let satisfiedFinal = 0;
   let totalConds = mission.successConditions.length;
@@ -514,16 +601,18 @@ export function replayEpisode(
     if (r.result === 'success') {
       satisfiedFinal = totalConds;
       // 1s stability dwell — all conditions held continuously.
-      if (firstAllSatMs === null) firstAllSatMs = f.t * 1000;
+      if (firstAllSatMs === null) { firstAllSatMs = f.t * 1000; winStartIdx = i; }
       const dwell = f.t * 1000 - firstAllSatMs;
       if (dwell >= STABILITY_DWELL_MS_REPLAY) {
         endStatus = 'success';
         endElapsedS = f.t;
+        winEndIdx = i;
         break;
       }
     } else {
       // running — reset dwell, capture progress for fall-through finalize.
       firstAllSatMs = null;
+      winStartIdx = -1;
       satisfiedFinal = r.satisfied;
     }
   }
@@ -533,6 +622,11 @@ export function replayEpisode(
   const stepsInOrderFrac = mission.steps.length === 0
     ? 1
     : Math.min(1, satisfiedFrac);
+
+  // Stability only matters on a successful run (others are gate-zeroed).
+  const stability = endStatus === 'success' && winStartIdx >= 0 && winEndIdx >= winStartIdx
+    ? computeReplayStability(mission, frames, winStartIdx, winEndIdx)
+    : undefined;
 
   const m = tracker.finalize({
     hardSuccess: endStatus === 'success',
@@ -544,6 +638,7 @@ export function replayEpisode(
     parTimeS: mission.parTimeS,
     optimalPathM,
     timedOut: endStatus === 'timeout',
+    stability,
   });
 
   return {
