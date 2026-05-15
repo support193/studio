@@ -11,21 +11,23 @@ import { useTurnkey, ClientState } from '@turnkey/react-wallet-kit';
 import { Wallet, ChevronDown, LogOut } from 'lucide-react';
 
 export interface InitialUser {
-  id: string;
-  kind: 'wallet' | 'email';
-  email?: string | null;
+  id: string;   // wallet address (lowercased)
 }
 
 export default function WalletButton({ initialUser }: { initialUser: InitialUser | null }) {
   const router = useRouter();
-  const { handleLogin, clientState, wallets } = useTurnkey();
+  const turnkey = useTurnkey();
+  const { handleLogin, clientState, wallets } = turnkey;
+  // `logout` is exposed on the provider value but missing from the shipped
+  // .d.ts — access it through a narrow cast.
+  const turnkeyLogout = (turnkey as unknown as { logout?: () => Promise<void> }).logout;
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const ddRef = useRef<HTMLDivElement | null>(null);
 
   // Sync to /api/auth/login any time Turnkey produces a wallet address that
   // doesn't match our current cookie state.
-  const lastSyncedRef = useRef<string | null>(initialUser?.kind === 'wallet' ? initialUser.id : null);
+  const lastSyncedRef = useRef<string | null>(initialUser?.id ?? null);
 
   useEffect(() => {
     if (clientState !== ClientState.Ready) return;
@@ -66,15 +68,18 @@ export default function WalletButton({ initialUser }: { initialUser: InitialUser
 
   async function onDisconnect() {
     setOpen(false);
+    // Clear our cookie first so the re-sync effect can't immediately log
+    // the user back in, then tear down the Turnkey session.
+    lastSyncedRef.current = '__logged_out__';
     await fetch('/api/auth/logout', { method: 'POST' });
+    try {
+      await turnkeyLogout?.();
+    } catch { /* ignore — cookie is already gone */ }
     router.refresh();
   }
 
   // ── Authenticated rendering ─────────────────────────────────────────
   if (initialUser) {
-    const label = initialUser.kind === 'email'
-      ? (initialUser.email ?? 'admin')
-      : shortenAddress(initialUser.id);
     return (
       <div className="relative" ref={ddRef}>
         <button
@@ -82,17 +87,17 @@ export default function WalletButton({ initialUser }: { initialUser: InitialUser
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-2 rounded-full border border-[#1f1f1f] bg-[rgba(248,249,250,0.04)] py-[6px] pl-[12px] pr-[10px] backdrop-blur-[2px] hover:bg-[rgba(248,249,250,0.08)]"
         >
-          {initialUser.kind === 'wallet' && (
-            <span className="size-[20px] rounded-full" style={{ backgroundImage: gradientFor(initialUser.id) }} />
-          )}
-          <span className="font-manrope text-[13px] leading-none text-[#f8f9fa]">{label}</span>
+          <span className="size-[20px] rounded-full" style={{ backgroundImage: gradientFor(initialUser.id) }} />
+          <span className="font-manrope text-[13px] leading-none text-[#f8f9fa]">
+            {shortenAddress(initialUser.id)}
+          </span>
           <ChevronDown size={14} className="text-[#a8a8b0]" />
         </button>
         {open && (
-          <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[200px] rounded-[10px] border border-[#1f1f1f] bg-[#0a0a0a] p-1 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.8)]">
+          <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[220px] rounded-[10px] border border-[#1f1f1f] bg-[#0a0a0a] p-1 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.8)]">
             <div className="border-b border-[#1f1f1f] px-3 py-2">
               <div className="font-manrope text-[10px] uppercase tracking-wider text-[#737780]">
-                {initialUser.kind === 'wallet' ? 'Wallet' : 'Admin'}
+                Wallet
               </div>
               <div className="break-all font-mono text-[10px] text-[#a8a8b0]">{initialUser.id}</div>
             </div>
@@ -101,7 +106,7 @@ export default function WalletButton({ initialUser }: { initialUser: InitialUser
               onClick={onDisconnect}
               className="flex w-full items-center gap-2 rounded-[6px] px-3 py-2 font-manrope text-[12px] text-[#a8a8b0] hover:bg-[rgba(248,249,250,0.04)] hover:text-white"
             >
-              <LogOut size={12} /> {initialUser.kind === 'wallet' ? 'Disconnect' : 'Sign out'}
+              <LogOut size={12} /> Disconnect
             </button>
           </div>
         )}
