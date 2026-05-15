@@ -13,9 +13,8 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
-  RotateCcw, Trophy, XCircle, Clock, Star, Play, X, Sparkles,
+  RotateCcw, Trophy, XCircle, Clock, Star, Play, Sparkles,
   MousePointer2, MousePointerClick, ZoomIn, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { PandaV3Scene } from '@/components/3d-studio/PandaV3Scene';
@@ -43,8 +42,6 @@ import type {
 
 const STABILITY_DWELL_MS = 1000;
 
-const ONBOARDING_KEY = 'zeno-mission-tutorial-seen';
-
 export default function MissionPlayer({
   mission,
   logId,
@@ -52,7 +49,6 @@ export default function MissionPlayer({
   mission: MissionDefinition;
   logId: string | null;
 }) {
-  const router = useRouter();
   const controls = usePandaV3Controls();
   const frameDataRef = useRef<PandaV3FrameSnapshot | null>(null);
   const physRef = useRef<PandaV3PhysicsHandle | null>(null);
@@ -62,7 +58,6 @@ export default function MissionPlayer({
 
   const startMsRef = useRef<number>(Date.now());
   const [started, setStarted] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [elapsedS, setElapsedS] = useState(0);
   const [evalRes, setEvalRes] = useState<EvalResult>({ result: 'running', satisfied: 0, total: mission.successConditions.length });
   const [stabilizing, setStabilizing] = useState(false);
@@ -85,18 +80,9 @@ export default function MissionPlayer({
   // metrics tracker to know which contacts/releases to record.
   const relevantIds = useMemo(() => collectConditionIds(mission.successConditions), [mission]);
 
-  // Onboarding gate: localStorage check.  SSR-safe.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const seen = localStorage.getItem(ONBOARDING_KEY);
-    if (seen) {
-      setStarted(true);
-      startMsRef.current = Date.now();
-      lastSampleMsRef.current = Date.now();
-    } else {
-      setShowOnboarding(true);
-    }
-  }, []);
+  // Mission is gated behind the header Start button: the page loads paused
+  // (started=false) — countdown frozen at full time, eval/capture idle —
+  // until the user explicitly clicks Start (startMission).
 
   // 100ms tracker update.  Runs only after the timer is live.
   useEffect(() => {
@@ -254,12 +240,12 @@ export default function MissionPlayer({
   }
 
   const handleReset = useCallback(() => {
+    // Reset only restores the arm + mission objects.  The countdown keeps
+    // running — startMsRef/elapsedS are intentionally left untouched.
     setResultDone(null);
     setMetrics(null);
     setStabilizing(false);
-    setElapsedS(0);
     setEvalRes({ result: 'running', satisfied: 0, total: mission.successConditions.length });
-    startMsRef.current = Date.now();
     lastSampleMsRef.current = Date.now();
     firstAllSatMsRef.current = null;
     finalisedRef.current = false;
@@ -270,11 +256,8 @@ export default function MissionPlayer({
     physRef.current?.resetMissionObjects();
   }, [controls, mission.successConditions.length]);
 
-  function dismissOnboarding() {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ONBOARDING_KEY, '1');
-    }
-    setShowOnboarding(false);
+  // Triggered by the header Start button — begins the timer/eval/capture.
+  function startMission() {
     setStarted(true);
     startMsRef.current = Date.now();
     lastSampleMsRef.current = Date.now();
@@ -314,10 +297,20 @@ export default function MissionPlayer({
         <h1 className="font-manrope text-[28px] font-semibold leading-[1.2] text-[#f8f9fa] xl:text-[32px]">
           {mission.title}
         </h1>
-        <div className="flex items-center gap-[6px]">
-          <TimeColumn value={remM} label="Minutes" valueColor={minuteColor} />
-          <TimerColon />
-          <TimeColumn value={remSec} label="Seconds" valueColor={secondColor} />
+        <div className="flex items-center gap-[20px]">
+          {!started && (
+            <button
+              onClick={startMission}
+              className="flex items-center gap-2 rounded-full bg-[#7C5CFC] px-5 py-2.5 font-manrope text-[14px] font-semibold text-white transition-colors hover:bg-[#6B4FE0]"
+            >
+              <Play size={14} fill="white" /> Start
+            </button>
+          )}
+          <div className="flex items-center gap-[6px]">
+            <TimeColumn value={remM} label="Minutes" valueColor={minuteColor} />
+            <TimerColon />
+            <TimeColumn value={remSec} label="Seconds" valueColor={secondColor} />
+          </div>
         </div>
       </header>
 
@@ -512,55 +505,6 @@ export default function MissionPlayer({
           </button>
         </div>
       </footer>
-
-      {/* ─── Onboarding overlay ────────────────────────────────────────── */}
-      {showOnboarding && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/85 backdrop-blur-sm">
-          <div className="w-[520px] max-w-[92vw] rounded-[16px] border border-[#1f1f1f] bg-[#0A0A0F] p-7">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="rounded-full bg-[#7C5CFC]/20 px-2.5 py-1 font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#a48dff]">
-                Mission start
-              </span>
-            </div>
-            <h2 className="font-manrope text-[24px] font-semibold leading-tight text-white">
-              {mission.title}
-            </h2>
-            {mission.goal && (
-              <p className="mt-2 font-manrope text-[14px] leading-relaxed text-[#a8a8b0]">
-                {mission.goal}
-              </p>
-            )}
-
-            <div className="mt-5 rounded-[10px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-4">
-              <div className="mb-3 font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">
-                Basic controls
-              </div>
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[12px]">
-                <MiniKeys keys={['W', 'A', 'S', 'D']} /> <MiniAction>Move (forward / left / back / right)</MiniAction>
-                <MiniKeys keys={['Q', 'E']} />          <MiniAction>Up / down</MiniAction>
-                <MiniKeys keys={['Space']} />           <MiniAction>Grab / release</MiniAction>
-                <MiniKeys keys={['R']} />               <MiniAction>Reset</MiniAction>
-              </div>
-              <div className="mt-2 font-manrope text-[10px] italic text-[#535357]">
-                Full key reference is shown in the Control bar at the bottom.
-              </div>
-            </div>
-
-            <button
-              onClick={dismissOnboarding}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#7C5CFC] py-3 font-manrope text-[14px] font-semibold text-white hover:bg-[#6B4FE0]"
-            >
-              <Play size={14} fill="white" /> Start
-            </button>
-            <button
-              onClick={() => router.push('/missions')}
-              className="mt-2 flex w-full items-center justify-center gap-1 rounded-full py-2 font-manrope text-[12px] text-[#737780] hover:text-white"
-            >
-              <X size={12} /> Exit
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ─── Stabilizing pill (visible during the 1s dwell after all conds hit) ─── */}
       {stabilizing && !resultDone && (
@@ -843,27 +787,6 @@ function MetricCell({ icon, label, value }: { icon: React.ReactNode; label: stri
       </div>
       <span className="font-mono text-[14px] font-semibold text-white">{value}</span>
     </div>
-  );
-}
-
-function MiniKeys({ keys }: { keys: string[] }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {keys.map((k) => (
-        <kbd
-          key={k}
-          className="inline-flex min-w-[22px] items-center justify-center rounded border border-[rgba(248,249,250,0.15)] bg-[rgba(248,249,250,0.06)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[#e8e8ee]"
-        >
-          {k}
-        </kbd>
-      ))}
-    </div>
-  );
-}
-
-function MiniAction({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="self-center font-manrope text-[11px] text-[#a8a8b0]">{children}</span>
   );
 }
 
