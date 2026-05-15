@@ -5,6 +5,8 @@
 import Link from 'next/link';
 import { Bot, Flag, Clock, ChevronDown, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getServerUser } from '@/lib/auth/server-user';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,11 +52,13 @@ export default async function MissionsPage() {
     .order('title', { ascending: true });
   const missions = (missionsData ?? []) as MissionRow[];
 
-  // Per-user attempt counts (only when signed in).
-  const { data: { user } } = await supabase.auth.getUser();
-  let attemptsByMission: Record<string, number> = {};
+  // Per-user attempt counts (only when signed in).  Wallet users have no
+  // auth.uid() so we read via service-role + manual user_id filter.
+  const user = await getServerUser();
+  const attemptsByMission: Record<string, number> = {};
   if (user) {
-    const { data: attemptsData } = await supabase
+    const admin = createAdminClient();
+    const { data: attemptsData } = await admin
       .from('mission_attempts')
       .select('mission_id, attempts')
       .eq('user_id', user.id);
@@ -72,8 +76,8 @@ export default async function MissionsPage() {
       description: m.goal ?? '',
       count: `${used}/${m.max_attempts}`,
       duration: formatDuration(m.time_limit_s),
-      // Non-signed-in users still see the catalog; middleware redirects
-      // them to /login when they click the card.
+      // Non-signed-in users still see the catalog and can click in to
+      // play anonymously (no attempt is logged).
       href: `/missions/${m.id}/play`,
       disabled: exhausted,
       durationDanger: m.time_limit_s <= 60,

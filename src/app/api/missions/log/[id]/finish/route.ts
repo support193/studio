@@ -11,7 +11,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { gzipSync } from 'node:zlib';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getServerUser } from '@/lib/auth/server-user';
 import { replayEpisode } from '@/lib/missions/metrics';
 import type { TrajectoryEnvelope, TrajectoryFrame } from '@/lib/missions/metrics';
 import type { Condition, MissionObject } from '@/lib/missions/types';
@@ -29,10 +30,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: logId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getServerUser();
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+
+  const supabase = createAdminClient();
 
   // Size guard before parsing JSON.
   const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
@@ -67,7 +68,7 @@ export async function POST(
     .eq('id', logId)
     .single();
   if (logErr || !log) return NextResponse.json({ error: 'log_not_found' }, { status: 404 });
-  if (log.user_id !== user.id) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (String(log.user_id) !== user.id) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   if (log.status !== 'running') return NextResponse.json({ error: 'already_finalised' }, { status: 409 });
 
   // ── load mission for server-side replay ─────────────────────────────

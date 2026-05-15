@@ -1,15 +1,14 @@
 // Auth middleware.
-//   1. /admin/* requires a valid Supabase session AND being in the ADMIN_EMAILS allowlist.
-//      /admin/login is exempt so unauthenticated users can sign in.
-//   2. /missions/:id/play requires any signed-in user; non-authenticated users
-//      are redirected to /login with ?next= so we can resume after signin.
+//
+// /admin/* — requires a Supabase session in the ADMIN_EMAILS allowlist.
+// Everything else is open: anonymous users can browse all pages, and the
+// wallet connect button in the TopNav is the entry point for becoming a
+// signed-in user.
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 type CookieSet = { name: string; value: string; options: CookieOptions };
-
-const PLAY_REGEX = /^\/missions\/[^/]+\/play$/;
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next({ request: req });
@@ -65,17 +64,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // /missions/:id/play — any signed-in user is allowed.
-  if (PLAY_REGEX.test(path) && !user) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('next', path);
-    return NextResponse.redirect(url);
-  }
-
   return res;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/missions/:path*'],
+  matcher: ['/admin/:path*'],
 };

@@ -310,7 +310,7 @@ function LeaderboardTable({ rows, currentUserId }: { rows: LeaderRowDB[]; curren
                 <div className="flex items-center gap-[10px]">
                   <Avatar seed={row.rank} />
                   <span className="font-manrope text-[12px] font-medium text-[#7a7b80]">
-                    {maskEmail(row.user_email)}
+                    {row.display}
                     {isYou ? ' (you)' : ''}
                   </span>
                 </div>
@@ -334,13 +334,6 @@ function LeaderboardTable({ rows, currentUserId }: { rows: LeaderRowDB[]; curren
       </div>
     </div>
   );
-}
-
-function maskEmail(email: string | null): string {
-  if (!email) return '(deleted)';
-  const at = email.indexOf('@');
-  if (at < 2) return email;
-  return email.slice(0, 2) + '…' + email.slice(at);
 }
 
 function HeaderCell({ children }: { children: React.ReactNode }) {

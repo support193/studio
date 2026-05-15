@@ -1,12 +1,15 @@
 // /missions/[id]/play — server entry for the mission player.
 //
-// On entry we atomically consume one attempt for the signed-in user via the
-// `consume_mission_attempt` RPC.  If the user has already exhausted their
-// allotment, we bounce them back to /missions.  A reload of this page counts
-// as a new attempt; the in-session "Reset" button does not.
+// Anonymous visitors are allowed in.  When they hit Play we still render
+// the player but pass logId=null, so the in-browser experience works while
+// no attempts/XP get tracked.  Logged-in users (Turnkey wallet OR admin
+// email) get an attempt counter consumed via the consume_mission_attempt
+// RPC and a mission_attempt_logs row created up front.
 
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getServerUser } from '@/lib/auth/server-user';
 import MissionPlayer from './MissionPlayer';
 import type { MissionDefinition } from '@/lib/missions/types';
 
@@ -18,8 +21,10 @@ export default async function PlayMissionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
 
+  // Mission row read with the user-authed client — missions SELECT is open
+  // to anon so this works for everyone.
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('missions')
     .select('id, title, goal, steps, time_limit_s, par_time_s, difficulty, max_attempts, objects, success_conditions, fail_conditions')
@@ -27,31 +32,32 @@ export default async function PlayMissionPage({
     .single();
   if (error || !data) notFound();
 
-  // Middleware ensures we're authenticated here, but double-check defensively.
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=/missions/${id}/play`);
+  const user = await getServerUser();
+  let logId: string | null = null;
 
-  const { data: consumed, error: rpcError } = await supabase
-    .rpc('consume_mission_attempt', { p_mission_id: id })
-    .single<{ attempts: number; max_attempts: number }>();
-  if (rpcError) {
-    // attempts_exhausted (raised as P0001) is the expected "no more tries" path.
-    // /missions list will render the card as disabled with "No tries left".
-    redirect('/missions');
-  }
-  void consumed; // currently informational only; HUD reads max from mission
+  if (user) {
+    const admin = createAdminClient();
 
-  // Create a fresh attempt-log row.  It stays `status='running'` until the
-  // client posts the final metrics to /api/missions/log/[id]/finish.
-  const { data: log, error: logErr } = await supabase
-    .from('mission_attempt_logs')
-    .insert({ mission_id: id, user_id: user.id })
-    .select('id')
-    .single();
-  if (logErr || !log) {
-    // Logging failure isn't worth blocking the play page over — fall back
-    // to running without a log id (no metrics will be persisted).
-    console.error('mission_attempt_logs insert failed:', logErr);
+    // Atomic attempt-counter increment + max check.
+    const { error: rpcErr } = await admin
+      .rpc('consume_mission_attempt', { p_user_id: user.id, p_mission_id: id })
+      .single();
+    if (rpcErr) {
+      // attempts_exhausted (P0001) or mission_not_found → bounce.
+      redirect('/missions');
+    }
+
+    // Create the attempt log row (status starts at 'running').
+    const { data: log, error: logErr } = await admin
+      .from('mission_attempt_logs')
+      .insert({ mission_id: id, user_id: user.id })
+      .select('id')
+      .single();
+    if (logErr) {
+      console.error('mission_attempt_logs insert failed:', logErr);
+    } else {
+      logId = log.id;
+    }
   }
 
   const mission: MissionDefinition = {
@@ -68,5 +74,5 @@ export default async function PlayMissionPage({
     failConditions: data.fail_conditions ?? [],
   };
 
-  return <MissionPlayer mission={mission} logId={log?.id ?? null} />;
+  return <MissionPlayer mission={mission} logId={logId} />;
 }

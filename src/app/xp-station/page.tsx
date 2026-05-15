@@ -1,9 +1,14 @@
 // XP Station — Figma "XP Station" (4:144300 / 4:143818) wired to live data.
 //
 // Server-renders the donut, metrics, leaderboard, and the user's mission
-// history.  A small client wrapper handles tab state + countdown ticker.
+// history.  Anonymous users see the page but the personal panels just
+// show empty/CTA states.  Per-user queries hit mission_attempt_logs via
+// service-role (RLS would otherwise block since wallet users have no
+// auth.uid()).
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getServerUser } from '@/lib/auth/server-user';
 import XpStationClient from './XpStationClient';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +18,8 @@ interface UserSummary {
   total_xp: number;
   weekly_xp: number;
   avg_score: number;
-  grade: 'S' | 'A' | 'B' | 'C';
-  rank: number;
+  grade: 'S' | 'A' | 'B' | 'C' | '—';
+  rank: number | null;
   attempts_count: number;
   successes: number;
 }
@@ -22,7 +27,7 @@ interface UserSummary {
 export interface LeaderRowDB {
   rank: number;
   user_id: string;
-  user_email: string | null;
+  display: string;
   total_xp: number;
   avg_score: number;
   grade: 'S' | 'A' | 'B' | 'C';
@@ -42,27 +47,28 @@ export interface HistoryRowDB {
 }
 
 export default async function XpStationPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getServerUser();
+  const publicSupabase = await createClient();   // anon-safe reads
+  const admin = createAdminClient();             // per-user reads bypass RLS
 
   let summary: UserSummary | null = null;
   let history: HistoryRowDB[] = [];
+
   if (user) {
-    // Two flat queries are simpler (and safer typing-wise) than a nested
-    // FK select.  Join in JS via a mission_id → mission map.
     const [{ data: sum }, { data: logs }, { data: missionList }] = await Promise.all([
-      supabase.rpc('user_xp_summary', { p_user_id: user.id }).single<UserSummary>(),
-      supabase
+      admin.rpc('user_xp_summary', { p_user_id: user.id }).single<UserSummary>(),
+      admin
         .from('mission_attempt_logs')
         .select('id, started_at, status, quality_score, stars, xp_awarded, mission_id')
         .eq('user_id', user.id)
         .order('started_at', { ascending: false })
         .limit(50),
-      supabase
+      publicSupabase
         .from('missions')
         .select('id, title, difficulty'),
     ]);
     summary = sum ?? null;
+
     const missionMap = new Map<string, { id: string; title: string; difficulty: HistoryRowDB['mission_difficulty'] }>();
     for (const m of (missionList ?? []) as Array<{ id: string; title: string; difficulty: HistoryRowDB['mission_difficulty'] }>) {
       missionMap.set(m.id, m);
@@ -91,16 +97,11 @@ export default async function XpStationPage() {
     });
   }
 
-  // Leaderboard (only for signed-in viewers; anon sees empty state).
-  let leaders: LeaderRowDB[] = [];
-  if (user) {
-    const { data } = await supabase.rpc('public_leaderboard', { p_limit: 100 });
-    leaders = (data ?? []) as LeaderRowDB[];
-  }
+  const { data: leaderRaw } = await publicSupabase.rpc('public_leaderboard', { p_limit: 100 });
+  const leaders: LeaderRowDB[] = (leaderRaw ?? []) as LeaderRowDB[];
 
   return (
     <div className="relative min-h-[calc(100vh-52px)] w-full overflow-hidden bg-[#030303]">
-      {/* hero glow */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 h-[1050px]"
