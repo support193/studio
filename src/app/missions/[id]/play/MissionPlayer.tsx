@@ -256,12 +256,15 @@ export default function MissionPlayer({
     physRef.current?.resetMissionObjects();
   }, [controls, mission.successConditions.length]);
 
-  // Triggered by the header Start button — begins the timer/eval/capture.
+  // Triggered by the header Start button.  Performs a full reset (identical
+  // to pressing R) so a pre-positioned gripper / nudged object can't be
+  // carried into the run, then anchors the clock to the Start press so
+  // trajectory capture and timestamps begin from the canonical pose at t=0.
   function startMission() {
-    setStarted(true);
+    handleReset();
     startMsRef.current = Date.now();
-    lastSampleMsRef.current = Date.now();
-    trackerRef.current.reset();
+    lastSampleMsRef.current = startMsRef.current;
+    setStarted(true);
   }
 
   // Countdown — remaining seconds = timeLimit - elapsed.  Clamps at 0.
