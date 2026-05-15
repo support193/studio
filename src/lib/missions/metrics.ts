@@ -341,11 +341,11 @@ export class MetricsTracker {
     // ── 6 sub-metrics ──────────────────────────────────────────────────
     const task_completion = clamp01(0.7 * satisfiedFrac + 0.3 * stepsInOrderFrac);
 
-    // time_efficiency: floor 0.5, plus up to 0.5 scaled by the fraction of
+    // time_efficiency: floor 0.70, plus up to 0.30 scaled by the fraction of
     // the time budget left.  Finish instantly → ~1.0; use the whole limit →
-    // 0.5 (the floor).  parTimeS is intentionally no longer used.
+    // 0.70 (the floor).  parTimeS is intentionally no longer used.
     const time_efficiency = clamp01(
-      Math.max(0.5, 0.5 + 0.5 * (timeLimitS - elapsedS) / Math.max(1, timeLimitS)),
+      Math.max(0.70, 0.70 + 0.30 * (timeLimitS - elapsedS) / Math.max(1, timeLimitS)),
     );
 
     // path_efficiency: optimal/actual, capped 1.  If we never got an
