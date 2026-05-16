@@ -87,7 +87,7 @@ export default async function ExploreDetailPage({
     const u = new URLSearchParams();
     if (storedOnly) u.set('stored', '1');
     if (oq) u.set('oq', oq);
-    for (const [k, v] of Object.entries(patch)) v ? u.set(k, v) : u.delete(k);
+    for (const [k, v] of Object.entries(patch)) { if (v) u.set(k, v); else u.delete(k); }
     const s = u.toString();
     return s ? `/explore/${missionId}?${s}` : `/explore/${missionId}`;
   };

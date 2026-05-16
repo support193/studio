@@ -84,7 +84,7 @@ export default async function ExplorePage({
     if (q) u.set('q', q);
     if (diff) u.set('diff', diff);
     if (sort !== 'score') u.set('sort', sort);
-    for (const [k, v] of Object.entries(patch)) v ? u.set(k, v) : u.delete(k);
+    for (const [k, v] of Object.entries(patch)) { if (v) u.set(k, v); else u.delete(k); }
     const s = u.toString();
     return s ? `/explore?${s}` : '/explore';
   };
