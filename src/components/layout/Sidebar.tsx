@@ -14,6 +14,7 @@ type SubItem = { href: string; label: string };
 
 const STUDIO_ITEMS: SubItem[] = [
   { href: '/missions',    label: 'Mission' },
+  { href: '/explore',     label: 'Explore' },
   { href: '/test',        label: 'Test' },
   { href: '/xp-station',  label: 'XP Station' },
 ];
