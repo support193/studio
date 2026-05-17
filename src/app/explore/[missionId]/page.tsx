@@ -74,10 +74,11 @@ export default async function ExploreDetailPage({
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
 
   const pct = (n: number) => (h.total > 0 ? Math.round((n / h.total) * 100) : 0);
+  // Monochrome indigo ramp (best → worst) — no rainbow, per restyle.
   const buckets = [
-    ['90-100', h.b90, '#22c55e'], ['70-89', h.b70, '#84cc16'],
-    ['55-69', h.b55, '#facc15'], ['40-54', h.b40, '#f97316'],
-    ['<40', h.b0, '#ef4444'],
+    ['90-100', h.b90, '#5856d6'], ['70-89', h.b70, 'rgba(88,86,214,0.78)'],
+    ['55-69', h.b55, 'rgba(88,86,214,0.58)'], ['40-54', h.b40, 'rgba(88,86,214,0.42)'],
+    ['<40', h.b0, 'rgba(88,86,214,0.28)'],
   ] as const;
   const skills = deriveSkills(m.success_conditions);
   const fillPct = m.target_trajectories > 0
@@ -95,50 +96,50 @@ export default async function ExploreDetailPage({
   return (
     <div className="px-[24px] pb-[40px]">
       <div className="flex flex-col gap-[6px] py-[24px]">
-        <div className="font-manrope text-[12px] text-[#737780]">
+        <div className="font-manrope text-[12px] text-[var(--st-fg-2)]">
           <Link href="/explore" className="hover:text-[#f8f9fa]">Explore</Link> / {m.title}
         </div>
         <h1 className="font-manrope text-[28px] font-semibold leading-[1.2] text-[#f8f9fa]">{m.title}</h1>
         <div className="mt-[4px] flex flex-wrap items-center gap-[6px]">
-          <span className="rounded-full border border-[#1f1f1f] px-[10px] py-[3px] font-manrope text-[11px] capitalize text-[#a8a8b0]">{m.difficulty}</span>
+          <span className="rounded-full border border-[var(--st-border)] px-[10px] py-[3px] font-manrope text-[11px] capitalize text-[#a8a8b0]">{m.difficulty}</span>
           {skills.map((s) => (
-            <span key={s} className="rounded-full border border-[#7C5CFC]/40 bg-[#7C5CFC]/10 px-[10px] py-[3px] font-manrope text-[11px] text-[#a48dff]">{s}</span>
+            <span key={s} className="rounded-full border border-[#5856d6]/40 bg-[#5856d6]/10 px-[10px] py-[3px] font-manrope text-[11px] text-[#c5c3ff]">{s}</span>
           ))}
         </div>
       </div>
 
       {/* Stat cards */}
       <div className="mb-[20px] grid grid-cols-1 gap-[12px] md:grid-cols-3">
-        <div className="rounded-[12px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-[16px]">
-          <div className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">Trajectories</div>
+        <div className="rounded-[12px] border border-[var(--st-border)] bg-[var(--st-glass)] p-[16px]">
+          <div className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">Trajectories</div>
           <div className="mt-[6px] font-manrope text-[22px] font-semibold text-[#f8f9fa]">
-            {m.trajectory_count.toLocaleString()} <span className="text-[13px] text-[#737780]">/ {m.target_trajectories.toLocaleString()}</span>
+            {m.trajectory_count.toLocaleString()} <span className="text-[13px] text-[var(--st-fg-2)]">/ {m.target_trajectories.toLocaleString()}</span>
           </div>
           <div className="mt-[8px] h-[6px] w-full overflow-hidden rounded-full bg-[rgba(248,249,250,0.06)]">
-            <div className="h-full rounded-full bg-[#7C5CFC]" style={{ width: `${fillPct}%` }} />
+            <div className="h-full rounded-full bg-[#5856d6]" style={{ width: `${fillPct}%` }} />
           </div>
         </div>
-        <div className="rounded-[12px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-[16px]">
-          <div className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">Avg Score</div>
+        <div className="rounded-[12px] border border-[var(--st-border)] bg-[var(--st-glass)] p-[16px]">
+          <div className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">Avg Score</div>
           <div className="mt-[6px] font-manrope text-[22px] font-semibold text-[#f8f9fa]">{m.avg_score}</div>
         </div>
-        <div className="rounded-[12px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-[16px]">
-          <div className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">Time Limit / Par</div>
-          <div className="mt-[6px] font-manrope text-[22px] font-semibold text-[#f8f9fa]">{m.time_limit_s}s <span className="text-[13px] text-[#737780]">/ {m.par_time_s}s</span></div>
+        <div className="rounded-[12px] border border-[var(--st-border)] bg-[var(--st-glass)] p-[16px]">
+          <div className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">Time Limit / Par</div>
+          <div className="mt-[6px] font-manrope text-[22px] font-semibold text-[#f8f9fa]">{m.time_limit_s}s <span className="text-[13px] text-[var(--st-fg-2)]">/ {m.par_time_s}s</span></div>
         </div>
       </div>
 
       {/* Description */}
       {m.goal && (
-        <div className="mb-[20px] rounded-[12px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-[16px]">
-          <div className="mb-[6px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">Description</div>
+        <div className="mb-[20px] rounded-[12px] border border-[var(--st-border)] bg-[var(--st-glass)] p-[16px]">
+          <div className="mb-[6px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">Description</div>
           <p className="font-manrope text-[14px] leading-[1.5] text-[#d0d0d6]">{m.goal}</p>
         </div>
       )}
 
       {/* Score distribution */}
-      <div className="mb-[20px] rounded-[12px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-[16px]">
-        <div className="mb-[10px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">
+      <div className="mb-[20px] rounded-[12px] border border-[var(--st-border)] bg-[var(--st-glass)] p-[16px]">
+        <div className="mb-[10px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">
           Score distribution{h.total === 0 ? ' — no finalized runs yet' : ''}
         </div>
         <div className="flex h-[14px] w-full overflow-hidden rounded-full">
@@ -158,32 +159,32 @@ export default async function ExploreDetailPage({
       {/* Trajectory list */}
       <form action={`/explore/${missionId}`} method="get" className="mb-[12px] flex flex-wrap items-center gap-[8px]">
         <Link href={lqs({ stored: storedOnly ? '' : '1' })}
-          className={`rounded-[8px] border px-[12px] py-[8px] font-manrope text-[12px] ${storedOnly ? 'border-[#7C5CFC] text-[#f8f9fa]' : 'border-[#1f1f1f] text-[#737780]'}`}>
+          className={`rounded-[8px] border px-[12px] py-[8px] font-manrope text-[12px] ${storedOnly ? 'border-[#5856d6] text-[#f8f9fa]' : 'border-[var(--st-border)] text-[var(--st-fg-2)]'}`}>
           {storedOnly ? 'Stored only ✓' : 'Stored only'}
         </Link>
         <input name="oq" defaultValue={oq} placeholder="Search operator…"
-          className="w-[220px] rounded-[8px] border border-[#1f1f1f] bg-transparent px-[12px] py-[8px] font-manrope text-[12px] text-[#f8f9fa] placeholder:text-[#737780] focus:outline-none" />
+          className="w-[220px] rounded-[8px] border border-[var(--st-border)] bg-transparent px-[12px] py-[8px] font-manrope text-[12px] text-[#f8f9fa] placeholder:text-[var(--st-fg-2)] focus:outline-none" />
         {storedOnly && <input type="hidden" name="stored" value="1" />}
-        <button className="rounded-[8px] border border-[#1f1f1f] px-[12px] py-[8px] font-manrope text-[12px] text-[#f8f9fa] hover:border-[#2a2a2a]">Search</button>
+        <button className="rounded-[8px] border border-[var(--st-border)] px-[12px] py-[8px] font-manrope text-[12px] text-[#f8f9fa] hover:border-[var(--st-border-2)]">Search</button>
       </form>
 
-      <div className="overflow-hidden rounded-[12px] border border-[#1f1f1f]">
-        <div className="grid grid-cols-[80px_1fr_90px_100px_110px] gap-[12px] border-b border-[#1f1f1f] px-[16px] py-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">
+      <div className="overflow-hidden rounded-[12px] border border-[var(--st-border)]">
+        <div className="grid grid-cols-[80px_1fr_90px_100px_110px] gap-[12px] border-b border-[var(--st-border)] px-[16px] py-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">
           <span>#</span><span>Operator</span><span>Score</span><span>Data</span><span>Time</span>
         </div>
         {list.length === 0 ? (
-          <div className="px-[16px] py-[40px] text-center font-manrope text-[13px] text-[#737780]">No trajectories yet.</div>
+          <div className="px-[16px] py-[40px] text-center font-manrope text-[13px] text-[var(--st-fg-2)]">No trajectories yet.</div>
         ) : list.map((t, i) => (
-          <div key={t.id} className="grid grid-cols-[80px_1fr_90px_100px_110px] items-center gap-[12px] border-b border-[#141414] px-[16px] py-[12px] font-manrope text-[12px] text-[#f8f9fa]">
-            <span className="text-[#737780]">{from + i + 1}</span>
+          <div key={t.id} className="grid grid-cols-[80px_1fr_90px_100px_110px] items-center gap-[12px] border-b border-[rgba(255,255,255,0.05)] px-[16px] py-[12px] font-manrope text-[12px] text-[#f8f9fa]">
+            <span className="text-[var(--st-fg-2)]">{from + i + 1}</span>
             <span className="truncate font-mono text-[11px] text-[#a8a8b0]">{shortAddr(t.operator)}</span>
             <span>{t.quality_score ?? '—'}</span>
             <span>
               {t.stored
-                ? <span className="rounded-full border border-[#22c55e]/40 bg-[#22c55e]/10 px-[8px] py-[2px] text-[10px] text-[#22c55e]">Stored</span>
-                : <span className="text-[10px] text-[#737780]">—</span>}
+                ? <span className="rounded-full border border-[rgba(88,86,214,0.5)] bg-[rgba(88,86,214,0.10)] px-[8px] py-[2px] text-[10px] text-[#c5c3ff]">Stored</span>
+                : <span className="text-[10px] text-[var(--st-fg-2)]">—</span>}
             </span>
-            <span className="text-[#737780]">{rel(t.completed_at)}</span>
+            <span className="text-[var(--st-fg-2)]">{rel(t.completed_at)}</span>
           </div>
         ))}
       </div>
@@ -192,7 +193,7 @@ export default async function ExploreDetailPage({
         <div className="mt-[16px] flex items-center justify-center gap-[8px]">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <Link key={p} href={lqs({ page: String(p) })}
-              className={`rounded-[6px] border px-[10px] py-[6px] font-manrope text-[12px] ${p === page ? 'border-[#7C5CFC] text-[#f8f9fa]' : 'border-[#1f1f1f] text-[#737780]'}`}>{p}</Link>
+              className={`rounded-[6px] border px-[10px] py-[6px] font-manrope text-[12px] ${p === page ? 'border-[#5856d6] text-[#f8f9fa]' : 'border-[var(--st-border)] text-[var(--st-fg-2)]'}`}>{p}</Link>
           ))}
         </div>
       )}

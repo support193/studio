@@ -116,8 +116,8 @@ export default async function ExplorePage({
           ['Contributors', totals.contributors.toLocaleString()],
           ['Avg Score', String(totals.avg_score)],
         ].map(([label, val]) => (
-          <div key={label} className="rounded-[12px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-[16px]">
-            <div className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">{label}</div>
+          <div key={label} className="rounded-[12px] border border-[var(--st-border)] bg-[var(--st-glass)] p-[16px]">
+            <div className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">{label}</div>
             <div className="mt-[6px] font-manrope text-[24px] font-semibold text-[#f8f9fa]">{val}</div>
           </div>
         ))}
@@ -125,20 +125,23 @@ export default async function ExplorePage({
 
       {/* Daily chart + difficulty breakdown */}
       <div className="mb-[28px] grid grid-cols-1 gap-[12px] lg:grid-cols-3">
-        <div className="rounded-[12px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-[16px] lg:col-span-2">
-          <div className="mb-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">
+        <div className="rounded-[12px] border border-[var(--st-border)] bg-[var(--st-glass)] p-[16px] lg:col-span-2">
+          <div className="mb-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">
             Trajectories / day — last 14 days
           </div>
           <div className="flex h-[80px] items-end gap-[4px]">
             {daily.map((x) => (
-              <div key={x.day} className="flex-1 rounded-t-[2px] bg-[#7C5CFC]"
-                style={{ height: `${Math.max(2, (x.trajectory_count / maxDaily) * 100)}%` }}
+              <div key={x.day} className="flex-1 rounded-t-[2px] bg-[#5856d6]"
+                style={{
+                  height: `${Math.max(2, (x.trajectory_count / maxDaily) * 100)}%`,
+                  opacity: 0.4 + 0.6 * (x.trajectory_count / maxDaily),
+                }}
                 title={`${x.day}: ${x.trajectory_count}`} />
             ))}
           </div>
         </div>
-        <div className="rounded-[12px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-[16px]">
-          <div className="mb-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">By difficulty</div>
+        <div className="rounded-[12px] border border-[var(--st-border)] bg-[var(--st-glass)] p-[16px]">
+          <div className="mb-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]">By difficulty</div>
           <div className="flex flex-col gap-[8px]">
             {byDiff.map(({ d, n }) => (
               <div key={d} className="flex items-center justify-between font-manrope text-[12px]">
@@ -152,46 +155,46 @@ export default async function ExplorePage({
 
       {/* Filters */}
       <form className="mb-[16px] flex flex-wrap items-center gap-[8px]" action="/explore" method="get">
-        <div className="flex w-[260px] items-center gap-[8px] rounded-[8px] border border-[#1f1f1f] px-[12px] py-[8px]">
-          <Search size={16} strokeWidth={1.5} className="text-[#737780]" />
+        <div className="flex w-[260px] items-center gap-[8px] rounded-[8px] border border-[var(--st-border)] px-[12px] py-[8px]">
+          <Search size={16} strokeWidth={1.5} className="text-[var(--st-fg-2)]" />
           <input name="q" defaultValue={q} placeholder="Search tasks..."
-            className="flex-1 bg-transparent font-manrope text-[12px] text-[#f8f9fa] placeholder:text-[#737780] focus:outline-none" />
+            className="flex-1 bg-transparent font-manrope text-[12px] text-[#f8f9fa] placeholder:text-[var(--st-fg-2)] focus:outline-none" />
         </div>
         {diff && <input type="hidden" name="diff" value={diff} />}
         {sort !== 'score' && <input type="hidden" name="sort" value={sort} />}
-        <button className="rounded-[8px] border border-[#1f1f1f] px-[12px] py-[8px] font-manrope text-[12px] text-[#f8f9fa] hover:border-[#2a2a2a]">Search</button>
-        <Link href={qs({ diff: '' })} className={`rounded-[8px] border px-[12px] py-[8px] font-manrope text-[12px] ${!diff ? 'border-[#7C5CFC] text-[#f8f9fa]' : 'border-[#1f1f1f] text-[#737780]'}`}>All</Link>
+        <button className="rounded-[8px] border border-[var(--st-border)] px-[12px] py-[8px] font-manrope text-[12px] text-[#f8f9fa] hover:border-[var(--st-border-2)]">Search</button>
+        <Link href={qs({ diff: '' })} className={`rounded-[8px] border px-[12px] py-[8px] font-manrope text-[12px] ${!diff ? 'border-[#5856d6] text-[#f8f9fa]' : 'border-[var(--st-border)] text-[var(--st-fg-2)]'}`}>All</Link>
         {DIFFICULTIES.map((d) => (
-          <Link key={d} href={qs({ diff: d })} className={`rounded-[8px] border px-[12px] py-[8px] font-manrope text-[12px] capitalize ${diff === d ? 'border-[#7C5CFC] text-[#f8f9fa]' : 'border-[#1f1f1f] text-[#737780]'}`}>{d}</Link>
+          <Link key={d} href={qs({ diff: d })} className={`rounded-[8px] border px-[12px] py-[8px] font-manrope text-[12px] capitalize ${diff === d ? 'border-[#5856d6] text-[#f8f9fa]' : 'border-[var(--st-border)] text-[var(--st-fg-2)]'}`}>{d}</Link>
         ))}
-        <Link href={qs({ sort: sort === 'score' ? 'data' : 'score' })} className="ml-auto rounded-[8px] border border-[#1f1f1f] px-[12px] py-[8px] font-manrope text-[12px] text-[#a8a8b0]">
+        <Link href={qs({ sort: sort === 'score' ? 'data' : 'score' })} className="ml-auto rounded-[8px] border border-[var(--st-border)] px-[12px] py-[8px] font-manrope text-[12px] text-[#a8a8b0]">
           Sort: {sort === 'score' ? 'Avg Score' : 'Data'}
         </Link>
       </form>
 
       {/* Table (12 cols → horizontal scroll on narrow viewports) */}
-      <div className="overflow-x-auto rounded-[12px] border border-[#1f1f1f]">
+      <div className="overflow-x-auto rounded-[12px] border border-[var(--st-border)]">
         <div className="min-w-[1080px]">
-          <div className={`${GRID} border-b border-[#1f1f1f] px-[16px] py-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]`}>
+          <div className={`${GRID} border-b border-[var(--st-border)] px-[16px] py-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[var(--st-fg-2)]`}>
             <span>#</span><span>Task</span><span>Difficulty</span><span>Skills</span><span>QA</span>
             <span>Avg Score</span><span>Time</span><span>Path</span><span>Stability</span><span>Economy</span>
             <span>Data</span><span>Last Active</span>
           </div>
           {pageRows.length === 0 ? (
-            <div className="px-[16px] py-[40px] text-center font-manrope text-[13px] text-[#737780]">No tasks match.</div>
+            <div className="px-[16px] py-[40px] text-center font-manrope text-[13px] text-[var(--st-fg-2)]">No tasks match.</div>
           ) : pageRows.map((r, i) => (
             <Link key={r.id} href={`/explore/${r.id}`}
-              className={`${GRID} items-center border-b border-[#141414] px-[16px] py-[14px] font-manrope text-[12px] text-[#f8f9fa] transition-colors hover:bg-[rgba(248,249,250,0.03)]`}>
-              <span className="text-[#737780]">{(clamped - 1) * PAGE_SIZE + i + 1}</span>
+              className={`${GRID} items-center border-b border-[rgba(255,255,255,0.05)] px-[16px] py-[14px] font-manrope text-[12px] text-[#f8f9fa] transition-colors hover:bg-[rgba(248,249,250,0.03)]`}>
+              <span className="text-[var(--st-fg-2)]">{(clamped - 1) * PAGE_SIZE + i + 1}</span>
               <span className="truncate">{r.title}</span>
               <span className="capitalize text-[#a8a8b0]">{r.difficulty}</span>
               <span className="flex flex-wrap gap-[4px]">
                 {deriveSkills(r.success_conditions).map((s) => (
-                  <span key={s} className="rounded-full border border-[#7C5CFC]/40 bg-[#7C5CFC]/10 px-[8px] py-[2px] text-[10px] text-[#a48dff]">{s}</span>
+                  <span key={s} className="rounded-full border border-[#5856d6]/40 bg-[#5856d6]/10 px-[8px] py-[2px] text-[10px] text-[#c5c3ff]">{s}</span>
                 ))}
               </span>
               <span>
-                <span className="rounded-full border border-[#1f1f1f] px-[6px] py-[1px] font-manrope text-[9px] uppercase tracking-wide text-[#535357]" title="QA feature coming soon">soon</span>
+                <span className="rounded-full border border-[var(--st-border)] px-[6px] py-[1px] font-manrope text-[9px] uppercase tracking-wide text-[var(--st-fg-3)]" title="QA feature coming soon">soon</span>
               </span>
               <span className="font-semibold">{r.avg_score}</span>
               <span className="text-[#a8a8b0]">{pct100(r.avg_time)}</span>
@@ -199,7 +202,7 @@ export default async function ExplorePage({
               <span className="text-[#a8a8b0]">{pct100(r.avg_stability)}</span>
               <span className="text-[#a8a8b0]">{pct100(r.avg_economy)}</span>
               <span className="text-[#a8a8b0]">{r.trajectory_count.toLocaleString()} / {r.target_trajectories.toLocaleString()}</span>
-              <span className="text-[#737780]">{rel(r.last_active)}</span>
+              <span className="text-[var(--st-fg-2)]">{rel(r.last_active)}</span>
             </Link>
           ))}
         </div>
@@ -210,7 +213,7 @@ export default async function ExplorePage({
         <div className="mt-[16px] flex items-center justify-center gap-[8px]">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <Link key={p} href={qs({ page: String(p) })}
-              className={`rounded-[6px] border px-[10px] py-[6px] font-manrope text-[12px] ${p === clamped ? 'border-[#7C5CFC] text-[#f8f9fa]' : 'border-[#1f1f1f] text-[#737780]'}`}>{p}</Link>
+              className={`rounded-[6px] border px-[10px] py-[6px] font-manrope text-[12px] ${p === clamped ? 'border-[#5856d6] text-[#f8f9fa]' : 'border-[var(--st-border)] text-[var(--st-fg-2)]'}`}>{p}</Link>
           ))}
         </div>
       )}
