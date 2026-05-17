@@ -27,23 +27,28 @@ function PandaDemoInner() {
 
   return (
     <div className={`relative w-full ${promo ? 'fixed inset-0 z-[9999] h-screen bg-black' : 'h-[calc(100vh-52px)] bg-[#0A0A0F]'}`}>
+      {!promo && (
+        <div className="pointer-events-none absolute inset-0 z-0 st-backdrop full">
+          <div className="grid" />
+        </div>
+      )}
       <PandaV3Scene controls={controls} frameDataRef={frameDataRef} promo={promo} />
       {!promo && <>
 
 
       {/* Brand badge — top-left */}
       <div className="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-2">
-        <div className="rounded-md border border-[#333] bg-[#0A0A0F]/80 px-3 py-1.5 text-xs text-white backdrop-blur">
-          <span className="font-semibold tracking-wide text-[#7C5CFC]">ZenO</span>
+        <div className="st-glass px-3 py-1.5 text-xs text-white">
+          <span className="font-semibold tracking-wide text-[#5856d6]">ZenO</span>
           <span className="ml-1 text-[#8A8A9A]">Robot · Franka Panda</span>
         </div>
       </div>
 
       {/* Controls help — top-right, toggle */}
       {showHelp ? (
-        <div className="absolute right-4 top-4 z-20 w-72 rounded-md border border-[#333] bg-[#0A0A0F]/85 p-3 text-xs text-white backdrop-blur">
+        <div className="st-glass absolute right-4 top-4 z-20 w-72 p-3 text-xs text-white">
           <div className="mb-2 flex items-center justify-between">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[#7C5CFC]">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[#5856d6]">
               Controls
             </div>
             <button
@@ -64,23 +69,23 @@ function PandaDemoInner() {
             <Row keys="Mouse drag" label="Orbit camera" />
             <Row keys="Mouse wheel" label="Zoom" />
           </div>
-          <div className="mt-3 border-t border-[#222] pt-2 text-[10px] text-[#555]">
+          <div className="mt-3 border-t border-[var(--st-border)] pt-2 text-[10px] text-[#555]">
             Franka Panda · MuJoCo physics · diff-IK + null-space
           </div>
         </div>
       ) : (
         <button
           onClick={() => setShowHelp(true)}
-          className="absolute right-4 top-4 z-20 rounded-md border border-[#333] bg-[#0A0A0F]/80 px-3 py-1.5 text-xs text-[#8A8A9A] backdrop-blur hover:text-white"
+          className="st-glass absolute right-4 top-4 z-20 px-3 py-1.5 text-xs text-[#8A8A9A] hover:text-white"
         >
           ? Controls
         </button>
       )}
 
       {/* Sensitivity slider — bottom-left */}
-      <div className="absolute left-4 bottom-4 z-20 w-64 rounded-md border border-[#333] bg-[#0A0A0F]/85 p-3 backdrop-blur">
+      <div className="st-glass absolute left-4 bottom-4 z-20 w-64 p-3">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7C5CFC]">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5856d6]">
             Speed
           </span>
           <span className="font-mono text-[10px] text-[#C0C0CC]">{sensitivity}%</span>
@@ -96,7 +101,7 @@ function PandaDemoInner() {
             setSensitivity(v);
             controls.setSensitivity(v);
           }}
-          className="w-full accent-[#7C5CFC]"
+          className="w-full accent-[#5856d6]"
         />
         <div className="mt-1 flex justify-between text-[9px] text-[#555]">
           <span>10%</span>
@@ -112,7 +117,7 @@ function PandaDemoInner() {
 function Row({ keys, label }: { keys: string; label: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="font-mono text-[10px] text-[#7C5CFC]">{keys}</span>
+      <span className="font-mono text-[10px] text-[#5856d6]">{keys}</span>
       <span className="text-[10px] text-[#C0C0CC]">{label}</span>
     </div>
   );
