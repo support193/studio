@@ -278,8 +278,6 @@ export default function MissionPlayer({
   const remainingS = Math.max(0, mission.timeLimitS - elapsedS);
   const remM = String(Math.floor(remainingS / 60)).padStart(2, '0');
   const remSec = String(Math.floor(remainingS % 60)).padStart(2, '0');
-  const danger = remainingS <= 30;
-  const warning = !danger && remainingS <= 60;
 
   // Current step tracking (drives the highlight in the Step list).
   const total = mission.successConditions.length;
@@ -291,14 +289,10 @@ export default function MissionPlayer({
     ? -1
     : Math.min(stepsLen - 1, Math.floor((satisfied / Math.max(1, total)) * stepsLen));
 
-  const minuteColor = danger
-    ? 'text-[#ef4444]'
-    : warning
-    ? 'text-[#facc15]'
-    : remM === '00'
-    ? 'text-[#7b7b80]'
-    : 'text-[#f8f9fa]';
-  const secondColor = danger ? 'text-[#ef4444]' : warning ? 'text-[#facc15]' : 'text-[#f8f9fa]';
+  // Restyle: time pressure is no longer hue-coded (no red/yellow) — it's
+  // conveyed by position on the countdown only.  Monochrome white.
+  const minuteColor = remM === '00' ? 'text-[#7b7b80]' : 'text-[#f8f9fa]';
+  const secondColor = 'text-[#f8f9fa]';
 
   return (
     <div className="flex h-[calc(100vh-52px)] w-full flex-col overflow-hidden bg-[#030303]">
@@ -311,7 +305,7 @@ export default function MissionPlayer({
           {!started && (
             <button
               onClick={startMission}
-              className="flex items-center gap-2 rounded-full bg-[#7C5CFC] px-5 py-2.5 font-manrope text-[14px] font-semibold text-white transition-colors hover:bg-[#6B4FE0]"
+              className="flex items-center gap-2 rounded-full bg-[#5856d6] px-5 py-2.5 font-manrope text-[14px] font-semibold text-white transition-colors hover:bg-[#6B4FE0]"
             >
               <Play size={14} fill="white" /> Start
             </button>
@@ -346,9 +340,9 @@ export default function MissionPlayer({
                     className={[
                       'mt-[1px] inline-flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full border font-manrope text-[11px] font-bold leading-[16px]',
                       done
-                        ? 'border-[#22c55e]/60 bg-[#22c55e]/20 text-[#22c55e]'
+                        ? 'border-white/50 bg-white/10 text-white/50'
                         : current
-                        ? 'border-[#7C5CFC] bg-[#7C5CFC]/25 text-[#f8f9fa]'
+                        ? 'border-[#5856d6] bg-[#5856d6]/25 text-[#f8f9fa]'
                         : 'border-[rgba(248,249,250,0.5)] bg-[rgba(248,249,250,0.1)] text-[#f8f9fa]',
                     ].join(' ')}
                   >
@@ -385,9 +379,9 @@ export default function MissionPlayer({
           />
 
           {/* Gripper cam inset (top-left of viewport) */}
-          <div className="absolute left-[16px] top-[16px] z-10 w-[200px] overflow-hidden rounded-[8px] border border-[#1f1f1f] bg-black/40 backdrop-blur">
-            <div className="flex items-center justify-between border-b border-[#1f1f1f] px-[10px] py-[4px]">
-              <span className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#a48dff]">
+          <div className="absolute left-[16px] top-[16px] z-10 w-[200px] overflow-hidden rounded-[8px] border border-[var(--st-border)] bg-black/40 backdrop-blur">
+            <div className="flex items-center justify-between border-b border-[var(--st-border)] px-[10px] py-[4px]">
+              <span className="font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#c5c3ff]">
                 Gripper Cam
               </span>
               <span className="font-mono text-[9px] text-[#737780]">POV</span>
@@ -425,7 +419,7 @@ export default function MissionPlayer({
           {/* MOVE group */}
           <ControlGroup
             badgeLabel="Move"
-            badgeClass="bg-[rgba(54,118,248,0.15)] text-[#3676f8]"
+            badgeClass="bg-[var(--st-glass)] text-[var(--st-fg-2)] border border-[var(--st-border)]"
           >
             <WasdDiamond />
             <KeyPair keys={['W', 'S']} caption="Forward / Backward" small />
@@ -467,7 +461,7 @@ export default function MissionPlayer({
           {/* Camera group */}
           <ControlGroup
             badgeLabel="Camera"
-            badgeClass="bg-[rgba(239,75,220,0.15)] text-[#ef4bdc]"
+            badgeClass="bg-[var(--st-glass)] text-[var(--st-fg-2)] border border-[var(--st-border)]"
           >
             <div className="flex items-start gap-[16px]">
               <CameraIcon icon={<MousePointer2 size={28} strokeWidth={1.5} />} label="Pan" />
@@ -492,7 +486,7 @@ export default function MissionPlayer({
                 setSensitivity(v);
                 controls.setSensitivity(v);
               }}
-              className="w-[140px] accent-[#7C5CFC]"
+              className="w-[140px] accent-[#5856d6]"
             />
           </div>
           </div>
@@ -509,7 +503,7 @@ export default function MissionPlayer({
             onClick={() => setControlsOpen((v) => !v)}
             aria-label={controlsOpen ? 'Collapse control panel' : 'Expand control panel'}
             title={controlsOpen ? 'Collapse' : 'Expand'}
-            className="flex size-[28px] items-center justify-center rounded-[6px] border border-[#1f1f1f] text-[#a8a8b0] transition-colors hover:border-[#7C5CFC] hover:text-white"
+            className="flex size-[28px] items-center justify-center rounded-[6px] border border-[var(--st-border)] text-[#a8a8b0] transition-colors hover:border-[#5856d6] hover:text-white"
           >
             {controlsOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
           </button>
@@ -518,8 +512,8 @@ export default function MissionPlayer({
 
       {/* ─── Stabilizing pill (visible during the 1s dwell after all conds hit) ─── */}
       {stabilizing && !resultDone && (
-        <div className="absolute left-1/2 top-[120px] z-20 -translate-x-1/2 rounded-full border border-[#7C5CFC] bg-[#7C5CFC]/15 px-4 py-1.5 backdrop-blur">
-          <span className="font-manrope text-[12px] font-semibold uppercase tracking-wider text-[#a48dff]">
+        <div className="absolute left-1/2 top-[120px] z-20 -translate-x-1/2 rounded-full border border-[#5856d6] bg-[#5856d6]/15 px-4 py-1.5 backdrop-blur">
+          <span className="font-manrope text-[12px] font-semibold uppercase tracking-wider text-[#c5c3ff]">
             Stabilizing… hold still
           </span>
         </div>
@@ -528,12 +522,12 @@ export default function MissionPlayer({
       {/* ─── Result modal ──────────────────────────────────────────────── */}
       {resultDone && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="w-[460px] rounded-[12px] border border-[#1f1f1f] bg-[#0A0A0F] p-6">
+          <div className="w-[460px] rounded-[12px] border border-[var(--st-border)] bg-[#0A0A0F] p-6">
             {/* Headline */}
             <div className="text-center">
               {resultDone.result === 'success' ? (
                 <>
-                  <Trophy className="mx-auto mb-3 text-[#FACC15]" size={48} />
+                  <Trophy className="mx-auto mb-3 text-[#5856d6]" size={48} />
                   <div className="font-manrope text-[24px] font-semibold text-white">Mission complete</div>
                 </>
               ) : resultDone.result === 'timeout' ? (
@@ -563,8 +557,8 @@ export default function MissionPlayer({
                     <Star
                       key={i}
                       size={28}
-                      className={i <= metrics.stars ? 'text-[#FACC15]' : 'text-[#2a2a35]'}
-                      fill={i <= metrics.stars ? '#FACC15' : 'none'}
+                      className={i <= metrics.stars ? 'text-[#5856d6]' : 'text-[#2a2a35]'}
+                      fill={i <= metrics.stars ? '#5856d6' : 'none'}
                     />
                   ))}
                 </div>
@@ -575,12 +569,12 @@ export default function MissionPlayer({
                   </div>
                   <div className="text-center">
                     <div className="font-manrope text-[10px] uppercase tracking-wider text-[#737780]">XP</div>
-                    <div className="flex items-center gap-1 font-manrope text-[15px] font-medium text-[#a48dff]">
+                    <div className="flex items-center gap-1 font-manrope text-[15px] font-medium text-[#c5c3ff]">
                       <Sparkles size={14} /> Paid out next week
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-col gap-1.5 rounded-[8px] border border-[#1f1f1f] bg-[rgba(248,249,250,0.02)] p-3">
+                <div className="mt-4 flex flex-col gap-1.5 rounded-[8px] border border-[var(--st-border)] bg-[rgba(248,249,250,0.02)] p-3">
                   <SubMetricBar label="Time"      value={metrics.sub.time_efficiency} />
                   <SubMetricBar label="Path"      value={metrics.sub.path_efficiency} />
                   {canonicalApplied && (
@@ -597,13 +591,13 @@ export default function MissionPlayer({
             <div className="mt-6 flex justify-center gap-3">
               <Link
                 href="/missions"
-                className="rounded-full border border-[#1f1f1f] px-5 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:bg-[rgba(248,249,250,0.05)]"
+                className="rounded-full border border-[var(--st-border)] px-5 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:bg-[rgba(248,249,250,0.05)]"
               >
                 Back
               </Link>
               <button
                 onClick={handleReset}
-                className="flex items-center gap-1.5 rounded-full bg-[#7C5CFC] px-5 py-2 font-manrope text-[13px] font-medium text-white hover:bg-[#6B4FE0]"
+                className="flex items-center gap-1.5 rounded-full bg-[#5856d6] px-5 py-2 font-manrope text-[13px] font-medium text-white hover:bg-[#6B4FE0]"
               >
                 <RotateCcw size={13} /> Try again
               </button>
@@ -686,7 +680,7 @@ function KeyCap({ label, wide = false }: { label: string; wide?: boolean }) {
   return (
     <span
       className={[
-        'inline-flex items-center justify-center rounded-[6px] border border-[#525252] bg-black px-[10px] py-[8px] font-manrope text-[14px] font-bold leading-[14px] text-[#f8f9fa]',
+        'inline-flex items-center justify-center rounded-[6px] border border-[var(--st-border-2)] bg-black px-[10px] py-[8px] font-manrope text-[14px] font-bold leading-[14px] text-[#f8f9fa]',
         wide ? 'h-[34px] w-[180px]' : 'h-[34px] w-[34px]',
       ].join(' ')}
     >
@@ -727,7 +721,7 @@ function KeyPair({
           <span key={k} className="flex items-center gap-[2px]">
             <span
               className={[
-                'inline-flex items-center justify-center rounded-[4px] border border-[#525252] bg-black font-manrope font-bold leading-[14px] text-[#f8f9fa]',
+                'inline-flex items-center justify-center rounded-[4px] border border-[var(--st-border-2)] bg-black font-manrope font-bold leading-[14px] text-[#f8f9fa]',
                 small ? 'h-[20px] w-[20px] text-[9px]' : 'h-[24px] w-[24px] text-[11px]',
               ].join(' ')}
             >
@@ -758,7 +752,7 @@ function KeyCaption({
           <span
             key={k}
             className={[
-              'inline-flex items-center justify-center rounded-[4px] border border-[#525252] bg-black font-manrope font-bold leading-[14px] text-[#f8f9fa]',
+              'inline-flex items-center justify-center rounded-[4px] border border-[var(--st-border-2)] bg-black font-manrope font-bold leading-[14px] text-[#f8f9fa]',
               small ? 'h-[20px] w-[20px] text-[9px]' : 'h-[24px] w-[24px] text-[11px]',
             ].join(' ')}
           >
@@ -820,7 +814,7 @@ function collectConditionIds(conds: Condition[]): Set<string> {
 
 function SubMetricBar({ label, value }: { label: string; value: number }) {
   const pct = Math.max(0, Math.min(1, value));
-  const color = pct >= 0.8 ? '#22c55e' : pct >= 0.55 ? '#facc15' : '#7C5CFC';
+  const color = pct >= 0.8 ? '#5856d6' : pct >= 0.55 ? 'rgba(88,86,214,0.7)' : 'rgba(88,86,214,0.45)';
   return (
     <div className="flex items-center gap-[8px]">
       <span className="w-[78px] shrink-0 font-manrope text-[10px] uppercase tracking-wider text-[#737780]">
