@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { manrope, zenAntique } from '@/lib/fonts';
+import { manrope, zenAntique, pretendard } from '@/lib/fonts';
 import Providers from '@/components/layout/Providers';
 import ChromeShell from '@/components/layout/ChromeShell';
 import { getServerUser } from '@/lib/auth/server-user';
@@ -20,7 +20,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${manrope.variable} ${zenAntique.variable} bg-[#030303] text-[#f8f9fa]`}>
+      <body className={`${manrope.variable} ${zenAntique.variable} ${pretendard.variable} bg-[var(--st-bg)] text-[#f8f9fa]`}>
         <Providers>
           <ChromeShell initialUser={initialUser}>{children}</ChromeShell>
         </Providers>

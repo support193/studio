@@ -5,7 +5,10 @@
    ========================================================================== */
 
 @theme inline {
-  --font-manrope: var(--font-manrope);
+  /* Restyle: `font-manrope` utility (~18 files) now renders Pretendard via
+     this single remap — no per-file churn.  --font-pretendard is injected
+     on <body> by next/font/local. */
+  --font-manrope: var(--font-pretendard);
   --font-zen-antique: var(--font-zen-antique);
 
   /* Core Colors */
@@ -514,3 +517,123 @@ select option:hover {
   border-top: 1px solid var(--border-default);
   margin: 24px 0;
 }
+
+/* ==========================================================================
+   DesignCode restyle — Studio design system (ported from handoff studio.css)
+   Strict white / black / dark-indigo.  Consumed by the restyled pages via
+   the .st-* classes; tokens are var(--st-*).
+   ========================================================================== */
+:root {
+  --st-bg:        #06060a;
+  --st-bg-2:      #0a0a14;
+  --st-bg-3:      #11102a;
+  --st-violet:    #2c2b6b;
+  --st-violet-2:  #383789;
+  --st-accent:    #5856d6;
+
+  --st-fg:        #ffffff;
+  --st-fg-2:      rgba(255,255,255,0.65);
+  --st-fg-3:      rgba(255,255,255,0.40);
+
+  --st-border:    rgba(255,255,255,0.08);
+  --st-border-2:  rgba(255,255,255,0.14);
+  --st-glass:     rgba(255,255,255,0.04);
+  --st-glass-2:   rgba(255,255,255,0.08);
+}
+
+body { background: var(--st-bg); }
+
+/* —— Backdrop: dark night-sky —— */
+.st-backdrop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.st-backdrop.full {
+  background:
+    radial-gradient(70% 90% at 70% -10%, #2c2b6b 0%, transparent 60%),
+    radial-gradient(60% 80% at 20% 10%, #383789 0%, transparent 55%),
+    linear-gradient(180deg, #06060a 0%, #0a0a14 60%, #06060a 100%);
+}
+.st-backdrop.subtle {
+  background:
+    radial-gradient(80% 60% at 50% -20%, rgba(88,86,214,0.18) 0%, transparent 70%),
+    #06060a;
+}
+.st-backdrop .grid { position: absolute; inset: 0; perspective: 800px; }
+.st-backdrop .grid::before {
+  content:""; position: absolute; left: 0; right: 0; bottom: 0; height: 70%;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: rotateX(72deg) translateY(18%);
+  transform-origin: bottom;
+  mask-image: linear-gradient(transparent 0%, #000 30%, transparent 100%);
+  -webkit-mask-image: linear-gradient(transparent 0%, #000 30%, transparent 100%);
+}
+
+/* —— Glass —— */
+.st-glass {
+  background: var(--st-glass);
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.st-glass-2 {
+  background: var(--st-glass-2);
+  border: 1px solid var(--st-border-2);
+  border-radius: 12px;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+
+/* —— Buttons —— */
+.st-btn {
+  height: 32px; padding: 0 14px; border-radius: 8px;
+  font-family: var(--font-pretendard); font-size: 13px; font-weight: 500;
+  border: 1px solid transparent; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: transform .15s cubic-bezier(.2,.8,.2,1), background .15s, border-color .15s;
+  white-space: nowrap;
+  background: transparent; color: var(--st-fg);
+}
+.st-btn:hover { background: var(--st-glass-2); }
+.st-btn:active { transform: translateY(1px); }
+.st-btn svg { width: 14px; height: 14px; flex: none; stroke-width: 1.5; }
+.st-btn--ghost { background: transparent; color: var(--st-fg-2); }
+.st-btn--ghost:hover { color: var(--st-fg); background: var(--st-glass); }
+.st-btn--outline { background: transparent; border-color: var(--st-border-2); color: var(--st-fg); }
+.st-btn--outline:hover { border-color: rgba(255,255,255,0.28); background: var(--st-glass); }
+.st-btn--primary {
+  background: var(--st-accent); color: #fff; border: 0;
+  box-shadow: 0 4px 14px rgba(88,86,214,0.30), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.st-btn--primary:hover { background: #6f6df0; }
+.st-btn--glass {
+  background: linear-gradient(rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+  border-color: rgba(255,255,255,0.10);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+  color: var(--st-fg);
+}
+.st-btn--sm { height: 28px; padding: 0 12px; font-size: 12px; }
+.st-btn--lg { height: 40px; padding: 0 18px; font-size: 14px; }
+
+/* —— Chips / badges —— */
+.st-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 500; line-height: 18px;
+  border: 1px solid var(--st-border); color: var(--st-fg-2); background: transparent;
+}
+.st-chip:hover { border-color: var(--st-border-2); color: var(--st-fg); }
+.st-chip.active { color: var(--st-fg); background: var(--st-glass-2); border-color: var(--st-border-2); }
+.st-chip.accent { color: var(--st-fg); border-color: rgba(88,86,214,0.5); background: rgba(88,86,214,0.10); }
+.st-chip.danger { color: #fff; border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
+.st-chip svg { width: 14px; height: 14px; stroke-width: 1.5; }
+
+/* —— Inputs —— */
+.st-input {
+  height: 36px; padding: 0 12px; border-radius: 8px;
+  background: var(--st-glass); border: 1px solid var(--st-border);
+  color: var(--st-fg); font-size: 13px; font-family: var(--font-pretendard);
+  outline: none;
+}
+.st-input:focus { border-color: rgba(88,86,214,0.6); background: var(--st-glass-2); }
+.st-input::placeholder { color: var(--st-fg-3); }
