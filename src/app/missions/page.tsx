@@ -113,12 +113,12 @@ export default async function MissionsPage() {
               />
             </div>
           </div>
-          <div className="flex w-[280px] items-center gap-[8px] rounded-[8px] border border-[#1f1f1f] px-[16px] py-[8px]">
-            <Search size={16} strokeWidth={1.5} className="text-[#737780]" />
+          <div className="flex w-[280px] items-center gap-[8px] rounded-[8px] border border-[var(--st-border)] px-[16px] py-[8px]">
+            <Search size={16} strokeWidth={1.5} className="text-[var(--st-fg-2)]" />
             <input
               type="text"
               placeholder="Search tasks..."
-              className="flex-1 bg-transparent font-manrope text-[12px] font-medium leading-[18px] text-[#f8f9fa] placeholder:text-[#737780] focus:outline-none"
+              className="flex-1 bg-transparent font-manrope text-[12px] font-medium leading-[18px] text-[#f8f9fa] placeholder:text-[var(--st-fg-2)] focus:outline-none"
             />
           </div>
         </div>
@@ -126,7 +126,7 @@ export default async function MissionsPage() {
         {/* Cards grid */}
         {cards.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-[#1f1f1f] py-16 text-center">
-            <p className="font-manrope text-[14px] text-[#737780]">No missions yet.</p>
+            <p className="font-manrope text-[14px] text-[var(--st-fg-2)]">No missions yet.</p>
           </div>
         ) : (
           <div className="flex flex-wrap gap-[24px]">
@@ -146,12 +146,12 @@ function FilterButton({ label }: { label: string }) {
   return (
     <button
       type="button"
-      className="flex items-center gap-[4px] rounded-[8px] border border-[#1f1f1f] py-[8px] pl-[16px] pr-[12px] transition-colors hover:border-[#2a2a2a]"
+      className="flex items-center gap-[4px] rounded-[8px] border border-[var(--st-border)] py-[8px] pl-[16px] pr-[12px] transition-colors hover:border-[var(--st-border-2)]"
     >
-      <span className="font-manrope text-[12px] font-medium leading-[18px] text-[#737780]">
+      <span className="font-manrope text-[12px] font-medium leading-[18px] text-[var(--st-fg-2)]">
         {label}
       </span>
-      <ChevronDown size={16} strokeWidth={1.5} className="text-[#737780]" />
+      <ChevronDown size={16} strokeWidth={1.5} className="text-[var(--st-fg-2)]" />
     </button>
   );
 }
@@ -160,7 +160,7 @@ function ShowAllButton() {
   return (
     <button
       type="button"
-      className="rounded-[8px] border border-[#1f1f1f] px-[16px] py-[8px] font-manrope text-[12px] font-medium leading-[18px] text-[#f8f9fa] transition-colors hover:border-[#2a2a2a]"
+      className="rounded-[8px] border border-[var(--st-border)] px-[16px] py-[8px] font-manrope text-[12px] font-medium leading-[18px] text-[#f8f9fa] transition-colors hover:border-[var(--st-border-2)]"
     >
       Show All
     </button>
@@ -175,7 +175,7 @@ function CategoryChip({
   label: string;
 }) {
   return (
-    <span className="flex items-center gap-[4px] rounded-[8px] bg-[rgba(174,255,24,0.15)] py-[8px] pl-[12px] pr-[16px] text-[#aeff18]">
+    <span className="flex items-center gap-[4px] rounded-[8px] border border-[rgba(88,86,214,0.5)] bg-[rgba(88,86,214,0.10)] py-[8px] pl-[12px] pr-[16px] text-[#c5c3ff]">
       <span>{icon}</span>
       <span className="font-manrope text-[12px] font-medium leading-[18px]">{label}</span>
     </span>
@@ -186,9 +186,9 @@ function CategoryBadge() {
   return (
     <div className="relative flex items-center gap-[4px] overflow-hidden rounded-[6px] border border-white/80 bg-[rgba(248,249,250,0.05)] px-[12px] py-[7px]">
       <span className="flex items-center gap-[3px]">
-        <span className="size-[6px] rounded-full bg-[#ff2f6d]" />
-        <span className="size-[6px] rounded-full bg-[#ff3d00]" />
-        <span className="size-[6px] rounded-full bg-[#138eff]" />
+        <span className="size-[6px] rounded-full bg-white" />
+        <span className="size-[6px] rounded-full bg-white/70" />
+        <span className="size-[6px] rounded-full bg-[#5856d6]" />
       </span>
       <span className="font-manrope text-[12px] font-medium leading-none tracking-[-0.12px] text-white">
         Robot Arm
@@ -203,16 +203,26 @@ function MissionCardEl({ card }: { card: MissionCard }) {
       className={[
         'flex w-[528px] flex-col items-start rounded-[20px] border p-[12px]',
         card.disabled ? 'opacity-30' : '',
-        'border-[rgba(248,249,250,0.1)] bg-[rgba(248,249,250,0.02)]',
+        'border-[var(--st-border)] bg-[var(--st-glass)]',
       ].join(' ')}
     >
       <div
-        className="relative flex h-[240px] w-full flex-col items-start justify-between overflow-hidden rounded-[16px] border border-[rgba(255,255,255,0.7)] p-[20px]"
+        className="relative flex h-[240px] w-full flex-col items-start justify-between overflow-hidden rounded-[16px] border border-[rgba(255,255,255,0.10)] p-[20px]"
         style={{
-          backgroundImage: 'linear-gradient(-90deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 100%)',
+          background: 'linear-gradient(135deg, rgba(44,43,107,0.7) 0%, rgba(17,16,42,0.65) 60%, rgba(6,6,10,0.5) 100%)',
           backdropFilter: 'blur(21px)',
         }}
       >
+        {/* Indigo glow ring — top-right (design/Missions.jsx) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute"
+          style={{
+            right: -60, top: -60, width: 200, height: 200, borderRadius: 999,
+            background: 'radial-gradient(circle, rgba(88,86,214,0.45), transparent 70%)',
+            filter: 'blur(20px)',
+          }}
+        />
         {/* Noise / grain texture overlay — Figma uses mix-blend-mode: soft-light
             with opacity ~0.2 to add a subtle "fabric" feel.  Generated via
             inline SVG <feTurbulence> so no external asset is required. */}
@@ -246,8 +256,8 @@ function MissionCardEl({ card }: { card: MissionCard }) {
             </div>
             <div className="flex items-center gap-[12px]">
               <span className="flex items-center gap-[4px]">
-                <Flag size={16} strokeWidth={1.5} className="text-[#87878c]" />
-                <span className="font-manrope text-[12px] font-medium leading-[16px] text-[#87878c]">
+                <Flag size={16} strokeWidth={1.5} className="text-[var(--st-fg-2)]" />
+                <span className="font-manrope text-[12px] font-medium leading-[16px] text-[var(--st-fg-2)]">
                   {card.count}
                 </span>
               </span>
@@ -255,12 +265,12 @@ function MissionCardEl({ card }: { card: MissionCard }) {
                 <Clock
                   size={16}
                   strokeWidth={1.5}
-                  className={card.durationDanger ? 'text-[#c80000]' : 'text-[#87878c]'}
+                  className={card.durationDanger ? 'text-[#f8f9fa]' : 'text-[var(--st-fg-2)]'}
                 />
                 <span
                   className={[
                     'font-manrope text-[12px] font-medium leading-[16px]',
-                    card.durationDanger ? 'text-[#c80000]' : 'text-[#87878c]',
+                    card.durationDanger ? 'text-[#f8f9fa]' : 'text-[var(--st-fg-2)]',
                   ].join(' ')}
                 >
                   {card.duration}
@@ -270,11 +280,7 @@ function MissionCardEl({ card }: { card: MissionCard }) {
           </div>
           <button
             type="button"
-            className="relative flex items-center justify-center rounded-full border-[0.6px] border-[#040404] bg-[rgba(248,249,250,0.02)] px-[16px] py-[10px] backdrop-blur-[2px] transition-colors hover:bg-[rgba(248,249,250,0.06)]"
-            style={{
-              boxShadow:
-                'inset 0px -4px 4px 0px rgba(255,255,255,0.04), inset 0px 4px 4px 0px rgba(0,0,0,0.2)',
-            }}
+            className="st-btn st-btn--glass relative flex items-center justify-center rounded-full px-[18px] py-[10px]"
           >
             <span className="font-manrope text-[14px] leading-[1.2] text-[#f8f9fa]">
               {card.disabled ? 'No tries left' : 'Play'}
