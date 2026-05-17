@@ -15,7 +15,7 @@ const PAGE_SIZE = 25;
 interface MissionRow {
   id: string; title: string; goal: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | 'expert';
-  scenario: string | null; success_conditions: Condition[];
+  success_conditions: Condition[];
   time_limit_s: number; par_time_s: number;
   target_trajectories: number; trajectory_count: number;
   avg_score: number; last_active: string | null;
@@ -101,7 +101,6 @@ export default async function ExploreDetailPage({
         <h1 className="font-manrope text-[28px] font-semibold leading-[1.2] text-[#f8f9fa]">{m.title}</h1>
         <div className="mt-[4px] flex flex-wrap items-center gap-[6px]">
           <span className="rounded-full border border-[#1f1f1f] px-[10px] py-[3px] font-manrope text-[11px] capitalize text-[#a8a8b0]">{m.difficulty}</span>
-          {m.scenario && <span className="rounded-full border border-[#1f1f1f] px-[10px] py-[3px] font-manrope text-[11px] text-[#a8a8b0]">{m.scenario}</span>}
           {skills.map((s) => (
             <span key={s} className="rounded-full border border-[#7C5CFC]/40 bg-[#7C5CFC]/10 px-[10px] py-[3px] font-manrope text-[11px] text-[#a48dff]">{s}</span>
           ))}

@@ -17,13 +17,23 @@ interface RowDB {
   id: string;
   title: string;
   difficulty: 'easy' | 'medium' | 'hard' | 'expert';
-  scenario: string | null;
   success_conditions: Condition[];
   target_trajectories: number;
   trajectory_count: number;
   avg_score: number;
+  avg_time: number;
+  avg_path: number;
+  avg_stability: number;
+  avg_economy: number;
   last_active: string | null;
 }
+
+// Shared 12-column grid template (index table header + rows).
+const GRID =
+  'grid grid-cols-[40px_minmax(150px,1.3fr)_72px_minmax(104px,150px)_56px_70px_52px_52px_64px_64px_104px_88px] gap-[10px]';
+
+// 0..1 sub-metric → 0..100 integer for display.
+const pct100 = (v: number) => Math.round((v ?? 0) * 100);
 interface TotalsDB {
   total_tasks: number;
   total_trajectories: number;
@@ -159,29 +169,40 @@ export default async function ExplorePage({
         </Link>
       </form>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-[12px] border border-[#1f1f1f]">
-        <div className="grid grid-cols-[60px_1fr_90px_140px_90px_120px_110px] gap-[12px] border-b border-[#1f1f1f] px-[16px] py-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]">
-          <span>#</span><span>Task</span><span>Difficulty</span><span>Skills</span><span>Avg Score</span><span>Data</span><span>Last Active</span>
+      {/* Table (12 cols → horizontal scroll on narrow viewports) */}
+      <div className="overflow-x-auto rounded-[12px] border border-[#1f1f1f]">
+        <div className="min-w-[1080px]">
+          <div className={`${GRID} border-b border-[#1f1f1f] px-[16px] py-[12px] font-manrope text-[10px] font-semibold uppercase tracking-wider text-[#737780]`}>
+            <span>#</span><span>Task</span><span>Difficulty</span><span>Skills</span><span>QA</span>
+            <span>Avg Score</span><span>Time</span><span>Path</span><span>Stability</span><span>Economy</span>
+            <span>Data</span><span>Last Active</span>
+          </div>
+          {pageRows.length === 0 ? (
+            <div className="px-[16px] py-[40px] text-center font-manrope text-[13px] text-[#737780]">No tasks match.</div>
+          ) : pageRows.map((r, i) => (
+            <Link key={r.id} href={`/explore/${r.id}`}
+              className={`${GRID} items-center border-b border-[#141414] px-[16px] py-[14px] font-manrope text-[12px] text-[#f8f9fa] transition-colors hover:bg-[rgba(248,249,250,0.03)]`}>
+              <span className="text-[#737780]">{(clamped - 1) * PAGE_SIZE + i + 1}</span>
+              <span className="truncate">{r.title}</span>
+              <span className="capitalize text-[#a8a8b0]">{r.difficulty}</span>
+              <span className="flex flex-wrap gap-[4px]">
+                {deriveSkills(r.success_conditions).map((s) => (
+                  <span key={s} className="rounded-full border border-[#7C5CFC]/40 bg-[#7C5CFC]/10 px-[8px] py-[2px] text-[10px] text-[#a48dff]">{s}</span>
+                ))}
+              </span>
+              <span>
+                <span className="rounded-full border border-[#1f1f1f] px-[6px] py-[1px] font-manrope text-[9px] uppercase tracking-wide text-[#535357]" title="QA feature coming soon">soon</span>
+              </span>
+              <span className="font-semibold">{r.avg_score}</span>
+              <span className="text-[#a8a8b0]">{pct100(r.avg_time)}</span>
+              <span className="text-[#a8a8b0]">{pct100(r.avg_path)}</span>
+              <span className="text-[#a8a8b0]">{pct100(r.avg_stability)}</span>
+              <span className="text-[#a8a8b0]">{pct100(r.avg_economy)}</span>
+              <span className="text-[#a8a8b0]">{r.trajectory_count.toLocaleString()} / {r.target_trajectories.toLocaleString()}</span>
+              <span className="text-[#737780]">{rel(r.last_active)}</span>
+            </Link>
+          ))}
         </div>
-        {pageRows.length === 0 ? (
-          <div className="px-[16px] py-[40px] text-center font-manrope text-[13px] text-[#737780]">No tasks match.</div>
-        ) : pageRows.map((r, i) => (
-          <Link key={r.id} href={`/explore/${r.id}`}
-            className="grid grid-cols-[60px_1fr_90px_140px_90px_120px_110px] items-center gap-[12px] border-b border-[#141414] px-[16px] py-[14px] font-manrope text-[12px] text-[#f8f9fa] transition-colors hover:bg-[rgba(248,249,250,0.03)]">
-            <span className="text-[#737780]">{(clamped - 1) * PAGE_SIZE + i + 1}</span>
-            <span className="truncate">{r.title}</span>
-            <span className="capitalize text-[#a8a8b0]">{r.difficulty}</span>
-            <span className="flex flex-wrap gap-[4px]">
-              {deriveSkills(r.success_conditions).map((s) => (
-                <span key={s} className="rounded-full border border-[#7C5CFC]/40 bg-[#7C5CFC]/10 px-[8px] py-[2px] text-[10px] text-[#a48dff]">{s}</span>
-              ))}
-            </span>
-            <span>{r.avg_score}</span>
-            <span className="text-[#a8a8b0]">{r.trajectory_count.toLocaleString()} / {r.target_trajectories.toLocaleString()}</span>
-            <span className="text-[#737780]">{rel(r.last_active)}</span>
-          </Link>
-        ))}
       </div>
 
       {/* Pagination */}
