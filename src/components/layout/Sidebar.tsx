@@ -28,7 +28,7 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="fixed top-[52px] bottom-0 left-0 z-40 hidden w-[240px] border-r border-[#1a1a1a] bg-[#030303] md:block">
+    <aside className="fixed top-[52px] bottom-0 left-0 z-40 hidden w-[240px] border-r border-[var(--st-border)] bg-[rgba(6,6,10,0.6)] backdrop-blur-[28px] md:block">
       <nav className="flex flex-col items-center justify-center gap-[4px] px-[12px] py-[16px]">
         {/* 3d Studio category header */}
         <button
@@ -60,9 +60,9 @@ export default function Sidebar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex w-[216px] items-center rounded-[8px] p-[12px] transition-colors',
+                    'flex w-[216px] items-center rounded-[8px] border-l-2 border-transparent p-[12px] transition-colors',
                     active
-                      ? 'bg-gradient-sidebar-active text-[#f8f9fa]'
+                      ? 'border-[#5856d6] bg-gradient-to-r from-[rgba(88,86,214,0.20)] to-[rgba(88,86,214,0.04)] text-[#f8f9fa]'
                       : 'text-[#535357] hover:text-[#f8f9fa]',
                   )}
                 >
