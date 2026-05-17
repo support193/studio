@@ -147,7 +147,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
               required
               maxLength={120}
               placeholder="e.g. Pick the red cube"
-              className="w-full rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+              className="w-full rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
             />
           </Field>
           <Field label="Goal" hint="What should the user accomplish?">
@@ -156,7 +156,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
               onChange={(e) => setGoal(e.target.value)}
               rows={3}
               placeholder="Pick up the red cube and place it inside the green region."
-              className="w-full resize-y rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] leading-[1.5] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+              className="w-full resize-y rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] leading-[1.5] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
             />
           </Field>
           <Field label="Steps" hint="Break the goal into ordered substeps.">
@@ -171,7 +171,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
                     value={s}
                     onChange={(e) => updateStep(i, e.target.value)}
                     placeholder={`Step ${i + 1}`}
-                    className="flex-1 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+                    className="flex-1 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
                   />
                   <button type="button" onClick={() => removeStep(i)} className="text-[#737780] hover:text-red-400">
                     <Trash2 size={16} strokeWidth={1.5} />
@@ -193,7 +193,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
                 type="number" min={1} max={36000}
                 value={timeLimit}
                 onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
-                className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+                className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
               />
               <span className="font-manrope text-[12px] text-[#737780]">sec</span>
             </div>
@@ -204,7 +204,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
                 type="number" min={1} max={999}
                 value={maxAttempts}
                 onChange={(e) => setMaxAttempts(parseInt(e.target.value) || 0)}
-                className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+                className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
               />
               <span className="font-manrope text-[12px] text-[#737780]">tries / user</span>
             </div>
@@ -215,7 +215,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
                 type="number" min={1} max={36000}
                 value={parTime}
                 onChange={(e) => setParTime(parseInt(e.target.value) || 0)}
-                className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+                className="w-32 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
               />
               <span className="font-manrope text-[12px] text-[#737780]">sec (≈ 40% of time limit is typical)</span>
             </div>
@@ -230,7 +230,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
                   className={[
                     'rounded-full border px-4 py-1.5 font-manrope text-[12px] font-medium capitalize',
                     difficulty === d
-                      ? 'border-[#7C5CFC] bg-[#7C5CFC]/15 text-[#f8f9fa]'
+                      ? 'border-[#5856d6] bg-[#5856d6]/15 text-[#f8f9fa]'
                       : 'border-[#1f1f1f] text-[#737780] hover:text-[#f8f9fa]',
                   ].join(' ')}
                 >
@@ -271,7 +271,7 @@ export default function MissionForm({ initial }: { initial?: MissionFormValues }
             onClick={() => setShowPreview(true)}
             disabled={objects.length === 0}
             title={objects.length === 0 ? 'Add at least one object first' : '3D editor — drag to place, toggle Edit/Play'}
-            className="flex items-center gap-1.5 rounded-full border border-[#7C5CFC] px-4 py-2 font-manrope text-[13px] text-[#a48dff] hover:bg-[#7C5CFC]/10 disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-full border border-[#5856d6] px-4 py-2 font-manrope text-[13px] text-[#c5c3ff] hover:bg-[#5856d6]/10 disabled:opacity-40"
           >
             <Eye size={13} /> 3D Editor
           </button>
@@ -321,7 +321,7 @@ function TabBtn({ active, onClick, count, children }: { active: boolean; onClick
       {typeof count === 'number' && count > 0 && (
         <span className="ml-2 rounded-full bg-[rgba(248,249,250,0.1)] px-1.5 py-0.5 font-mono text-[10px] text-[#f8f9fa]">{count}</span>
       )}
-      {active && <span className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-[#7C5CFC]" />}
+      {active && <span className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-[#5856d6]" />}
     </button>
   );
 }
@@ -352,7 +352,7 @@ function NumInput({ value, onChange, step = 0.01 }: { value: number; onChange: (
     <input
       type="number" step={step} value={value}
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-      className="w-20 rounded-[6px] border border-[#1f1f1f] bg-transparent px-2 py-1 font-mono text-[12px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+      className="w-20 rounded-[6px] border border-[#1f1f1f] bg-transparent px-2 py-1 font-mono text-[12px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
     />
   );
 }
@@ -363,7 +363,7 @@ function TextInput({ value, onChange, placeholder, className }: { value: string;
       type="text" value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`rounded-[6px] border border-[#1f1f1f] bg-transparent px-2 py-1 font-manrope text-[12px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none ${className ?? ''}`}
+      className={`rounded-[6px] border border-[#1f1f1f] bg-transparent px-2 py-1 font-manrope text-[12px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none ${className ?? ''}`}
     />
   );
 }

@@ -187,7 +187,7 @@ export default function MissionEditor({
           )}
         </div>
         <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
-          <span className="rounded-full bg-[#7C5CFC]/20 px-3 py-1 font-manrope text-[11px] font-medium text-[#a48dff]">
+          <span className="rounded-full bg-[#5856d6]/20 px-3 py-1 font-manrope text-[11px] font-medium text-[#c5c3ff]">
             {objects.length} object{objects.length === 1 ? '' : 's'}
           </span>
           <button
@@ -293,7 +293,7 @@ function ModeToggle({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void 
         type="button"
         onClick={() => setMode('edit')}
         className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-manrope text-[12px] font-medium transition-colors ${
-          mode === 'edit' ? 'bg-[#7C5CFC] text-white' : 'text-[#737780] hover:text-white'
+          mode === 'edit' ? 'bg-[#5856d6] text-white' : 'text-[#737780] hover:text-white'
         }`}
       >
         <Pencil size={12} /> Edit
@@ -302,7 +302,7 @@ function ModeToggle({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void 
         type="button"
         onClick={() => setMode('play')}
         className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-manrope text-[12px] font-medium transition-colors ${
-          mode === 'play' ? 'bg-[#7C5CFC] text-white' : 'text-[#737780] hover:text-white'
+          mode === 'play' ? 'bg-[#5856d6] text-white' : 'text-[#737780] hover:text-white'
         }`}
       >
         <PlayIcon size={12} /> Play
@@ -544,7 +544,7 @@ function ObjectInspector({
                 next[i] = v;
                 onUpdate({ initialPos: next });
               }}
-              className="rounded-[4px] border border-[#1f1f1f] bg-transparent px-1.5 py-1 font-mono text-[11px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+              className="rounded-[4px] border border-[#1f1f1f] bg-transparent px-1.5 py-1 font-mono text-[11px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
             />
           </label>
         ))}
@@ -713,7 +713,7 @@ function NumIn({ value, onChange, step = 0.01 }: { value: number; onChange: (v: 
       step={step}
       value={value}
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-      className="w-24 rounded-[4px] border border-[#1f1f1f] bg-transparent px-1.5 py-1 font-mono text-[11px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+      className="w-24 rounded-[4px] border border-[#1f1f1f] bg-transparent px-1.5 py-1 font-mono text-[11px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
     />
   );
 }
@@ -733,7 +733,7 @@ function Vec3Input({ value, onChange }: { value: Vec3; onChange: (v: Vec3) => vo
             next[i] = v;
             onChange(next);
           }}
-          className="w-full rounded-[4px] border border-[#1f1f1f] bg-transparent px-1.5 py-1 font-mono text-[11px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+          className="w-full rounded-[4px] border border-[#1f1f1f] bg-transparent px-1.5 py-1 font-mono text-[11px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
         />
       ))}
     </div>

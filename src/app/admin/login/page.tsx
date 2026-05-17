@@ -58,7 +58,7 @@ function Inner() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
-            className="w-full rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+            className="w-full rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
           />
         </label>
 
@@ -72,7 +72,7 @@ function Inner() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             required
-            className="w-full rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+            className="w-full rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
           />
         </label>
 

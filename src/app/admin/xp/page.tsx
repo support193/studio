@@ -99,7 +99,7 @@ export default async function AdminXpPage({
               min={0}
               max={10000000}
               defaultValue={settings?.weekly_pool_xp ?? 10000}
-              className="w-48 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-mono text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+              className="w-48 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-mono text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -109,7 +109,7 @@ export default async function AdminXpPage({
             <select
               name="dow"
               defaultValue={settings?.distribution_dow ?? 1}
-              className="w-48 rounded-[8px] border border-[#1f1f1f] bg-[#0a0a0a] px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+              className="w-48 rounded-[8px] border border-[#1f1f1f] bg-[#0a0a0a] px-3 py-2 font-manrope text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
             >
               {DOW_LABELS.map((label, i) => (
                 <option key={i} value={i} className="bg-[#0a0a0a]">{label}</option>
@@ -126,12 +126,12 @@ export default async function AdminXpPage({
               min={0}
               max={100}
               defaultValue={settings?.trajectory_min_score ?? 70}
-              className="w-48 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-mono text-[14px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+              className="w-48 rounded-[8px] border border-[#1f1f1f] bg-transparent px-3 py-2 font-mono text-[14px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
             />
           </label>
           <button
             type="submit"
-            className="rounded-full border border-[#7C5CFC] bg-[#7C5CFC]/15 px-5 py-2 font-manrope text-[13px] font-medium text-[#a48dff] hover:bg-[#7C5CFC]/25"
+            className="rounded-full border border-[#5856d6] bg-[#5856d6]/15 px-5 py-2 font-manrope text-[13px] font-medium text-[#c5c3ff] hover:bg-[#5856d6]/25"
           >
             Save
           </button>
@@ -186,7 +186,7 @@ export default async function AdminXpPage({
                       </span>
                     </Td>
                     <Td>
-                      <span className="font-mono text-[13px] text-[#a48dff]">
+                      <span className="font-mono text-[13px] text-[#c5c3ff]">
                         {(settings?.weekly_pool_xp ?? 0).toLocaleString()} XP
                       </span>
                     </Td>
@@ -196,7 +196,7 @@ export default async function AdminXpPage({
                         <button
                           type="submit"
                           disabled={w.participant_count === 0}
-                          className="rounded-full border border-[#7C5CFC] bg-[#7C5CFC]/15 px-4 py-1.5 font-manrope text-[12px] font-medium text-[#a48dff] hover:bg-[#7C5CFC]/25 disabled:opacity-40"
+                          className="rounded-full border border-[#5856d6] bg-[#5856d6]/15 px-4 py-1.5 font-manrope text-[12px] font-medium text-[#c5c3ff] hover:bg-[#5856d6]/25 disabled:opacity-40"
                           title={w.participant_count === 0 ? 'No participants — pool forfeits' : 'Distribute now'}
                         >
                           {w.participant_count === 0 ? 'Forfeit empty week' : 'Distribute now'}
@@ -254,7 +254,7 @@ export default async function AdminXpPage({
                       </span>
                     </Td>
                     <Td>
-                      <span className="font-mono text-[13px] text-[#a48dff]">
+                      <span className="font-mono text-[13px] text-[#c5c3ff]">
                         {d.pool_xp.toLocaleString()} XP
                       </span>
                     </Td>
@@ -271,7 +271,7 @@ export default async function AdminXpPage({
                     <Td>
                       <Link
                         href={`/admin/xp/${d.id}`}
-                        className="font-manrope text-[12px] text-[#a48dff] hover:underline"
+                        className="font-manrope text-[12px] text-[#c5c3ff] hover:underline"
                       >
                         Awards →
                       </Link>

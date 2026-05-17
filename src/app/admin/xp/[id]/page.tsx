@@ -90,7 +90,7 @@ export default async function AdminDistributionDetailPage({
                     </span>
                   </Td>
                   <Td>
-                    <span className="font-mono text-[13px] text-[#a48dff]">+{a.xp_awarded.toLocaleString()} XP</span>
+                    <span className="font-mono text-[13px] text-[#c5c3ff]">+{a.xp_awarded.toLocaleString()} XP</span>
                   </Td>
                 </tr>
               ))}

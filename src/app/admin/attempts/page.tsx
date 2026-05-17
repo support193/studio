@@ -136,7 +136,7 @@ export default async function AdminAttemptsPage({
         />
         <button
           type="submit"
-          className="rounded-full border border-[#7C5CFC] bg-[#7C5CFC]/15 px-4 py-2 font-manrope text-[12px] font-medium text-[#a48dff] hover:bg-[#7C5CFC]/25"
+          className="rounded-full border border-[#5856d6] bg-[#5856d6]/15 px-4 py-2 font-manrope text-[12px] font-medium text-[#c5c3ff] hover:bg-[#5856d6]/25"
         >
           Apply
         </button>
@@ -214,7 +214,7 @@ export default async function AdminAttemptsPage({
                   </div>
                 </Td>
                 <Td>
-                  <span className="font-mono text-[12px] text-[#a48dff]">
+                  <span className="font-mono text-[12px] text-[#c5c3ff]">
                     {r.xp_awarded ? `+${r.xp_awarded}` : '—'}
                   </span>
                 </Td>
@@ -222,7 +222,7 @@ export default async function AdminAttemptsPage({
                   {trajectoryMap.get(r.id) ? (
                     <a
                       href={`/api/admin/trajectory/${r.id}`}
-                      className="font-manrope text-[12px] text-[#a48dff] hover:underline"
+                      className="font-manrope text-[12px] text-[#c5c3ff] hover:underline"
                     >
                       Download
                     </a>
@@ -278,7 +278,7 @@ function FilterSelect({
       <select
         name={name}
         defaultValue={value}
-        className="rounded-[8px] border border-[#1f1f1f] bg-[#0a0a0a] px-3 py-2 font-manrope text-[12px] text-[#f8f9fa] focus:border-[#7C5CFC] focus:outline-none"
+        className="rounded-[8px] border border-[#1f1f1f] bg-[#0a0a0a] px-3 py-2 font-manrope text-[12px] text-[#f8f9fa] focus:border-[#5856d6] focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value} className="bg-[#0a0a0a]">{o.label}</option>
@@ -321,7 +321,7 @@ function PageLink({
       className={[
         'flex size-[32px] items-center justify-center rounded-[8px] font-manrope text-[12px] font-medium',
         active
-          ? 'border border-[#7C5CFC] bg-[#7C5CFC]/20 text-white'
+          ? 'border border-[#5856d6] bg-[#5856d6]/20 text-white'
           : 'border border-[#1f1f1f] text-[#a8a8b0] hover:text-white',
       ].join(' ')}
     >
