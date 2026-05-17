@@ -8,9 +8,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-[calc(100vh-52px)]">
       {user && (
-        <div className="flex items-center justify-between border-b border-[#1a1a1a] px-6 py-3">
+        <div className="flex items-center justify-between border-b border-[var(--st-border)] px-6 py-3">
           <div className="flex items-center gap-2">
-            <span className="font-manrope text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7C5CFC]">
+            <span className="font-manrope text-[10px] font-semibold uppercase tracking-[0.2em] text-[#5856d6]">
               Admin
             </span>
             <span className="font-manrope text-[12px] text-[#939399]">

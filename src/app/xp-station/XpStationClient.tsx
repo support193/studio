@@ -70,7 +70,7 @@ export default function XpStationClient({ signedIn, summary, history, leaders, c
           <Separator />
           <TimeSegment value={remaining.s} label="Seconds" />
         </div>
-        <p className="font-manrope text-[12px] text-[#737780]">
+        <p className="font-manrope text-[12px] text-[var(--st-fg-2)]">
           Next week boundary (Monday 00:00 UTC) — admin distributes the pool any time after.
         </p>
       </div>
@@ -100,8 +100,8 @@ export default function XpStationClient({ signedIn, summary, history, leaders, c
           </ActivityCard>
         </div>
         {!signedIn && (
-          <p className="font-manrope text-[12px] text-[#737780]">
-            <Link href="/login" className="text-[#a48dff] hover:underline">Sign in</Link> to track your missions and XP.
+          <p className="font-manrope text-[12px] text-[var(--st-fg-2)]">
+            <Link href="/login" className="text-[#c5c3ff] hover:underline">Sign in</Link> to track your missions and XP.
           </p>
         )}
       </section>
@@ -198,11 +198,11 @@ function Divider() {
 // ─── Donut (SVG, grade-driven center) ────────────────────────────────────
 
 const GRADE_COLOR: Record<Grade, string> = {
-  S: '#70fbdb',
-  A: '#3676f8',
-  B: '#facc15',
-  C: '#7a7b80',
-  '—': '#535357',
+  S: '#ffffff',
+  A: '#5856d6',
+  B: 'rgba(255,255,255,0.55)',
+  C: 'rgba(255,255,255,0.30)',
+  '—': 'rgba(255,255,255,0.15)',
 };
 
 function Donut({ score, max, grade }: { score: number; max: number; grade: Grade }) {
@@ -257,16 +257,16 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 // ─── Leaderboard ─────────────────────────────────────────────────────────
 
 const GRADE_CHIP: Record<'S' | 'A' | 'B' | 'C', string> = {
-  S: 'bg-[rgba(112,251,219,0.15)] text-[#70fbdb]',
-  A: 'bg-[rgba(54,118,248,0.15)] text-[#3676f8]',
-  B: 'bg-[rgba(250,204,21,0.15)] text-[#facc15]',
-  C: 'bg-[rgba(122,123,128,0.18)] text-[#a8a8b0]',
+  S: 'bg-[rgba(255,255,255,0.12)] text-white',
+  A: 'bg-[rgba(88,86,214,0.18)] text-[#c5c3ff]',
+  B: 'bg-[rgba(255,255,255,0.06)] text-[rgba(255,255,255,0.70)]',
+  C: 'bg-[rgba(255,255,255,0.04)] text-[rgba(255,255,255,0.45)]',
 };
 
 function LeaderboardTable({ rows, currentUserId }: { rows: LeaderRowDB[]; currentUserId: string | null }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-[16px] border border-dashed border-[#1f1f1f] py-12 text-center font-manrope text-[13px] text-[#737780]">
+      <div className="rounded-[16px] border border-dashed border-[var(--st-border)] py-12 text-center font-manrope text-[13px] text-[var(--st-fg-2)]">
         No XP has been distributed yet.  Play some missions; the leaderboard fills after the first weekly payout.
       </div>
     );
@@ -291,7 +291,7 @@ function LeaderboardTable({ rows, currentUserId }: { rows: LeaderRowDB[]; curren
             <div
               key={row.user_id}
               className={[
-                'grid h-[64px] grid-cols-[100px_1fr_180px_180px_140px_140px] items-center border-b border-[#1a1a1a]',
+                'grid h-[64px] grid-cols-[100px_1fr_180px_180px_140px_140px] items-center border-b border-[var(--st-border)]',
                 isYou ? 'bg-[rgba(124,92,252,0.06)]' : '',
               ].join(' ')}
             >
@@ -308,7 +308,7 @@ function LeaderboardTable({ rows, currentUserId }: { rows: LeaderRowDB[]; curren
               </Cell>
               <Cell>
                 <div className="flex items-center gap-[10px]">
-                  <Avatar seed={row.rank} />
+                  <Avatar />
                   <span className="font-manrope text-[12px] font-medium text-[#7a7b80]">
                     {row.display}
                     {isYou ? ' (you)' : ''}
@@ -352,13 +352,12 @@ function Cell({ children, muted = false }: { children: React.ReactNode; muted?: 
   );
 }
 
-function Avatar({ seed }: { seed: number }) {
-  const hueA = (seed * 47) % 360;
-  const hueB = (hueA + 80) % 360;
+function Avatar() {
+  // Restyle: fixed indigo gradient (was per-seed HSL) for a consistent feel.
   return (
     <div
       className="size-[32px] rounded-full"
-      style={{ backgroundImage: `linear-gradient(135deg, hsl(${hueA} 70% 60%), hsl(${hueB} 70% 35%))` }}
+      style={{ backgroundImage: 'linear-gradient(135deg, #5856d6, #2c2b6b)' }}
       aria-hidden="true"
     />
   );
@@ -369,16 +368,16 @@ function Avatar({ seed }: { seed: number }) {
 function HistoryTable({ rows, signedIn }: { rows: HistoryRowDB[]; signedIn: boolean }) {
   if (!signedIn) {
     return (
-      <div className="rounded-[16px] border border-dashed border-[#1f1f1f] py-12 text-center font-manrope text-[13px] text-[#737780]">
-        <Link href="/login" className="text-[#a48dff] hover:underline">Sign in</Link> to see your mission history.
+      <div className="rounded-[16px] border border-dashed border-[var(--st-border)] py-12 text-center font-manrope text-[13px] text-[var(--st-fg-2)]">
+        <Link href="/login" className="text-[#c5c3ff] hover:underline">Sign in</Link> to see your mission history.
       </div>
     );
   }
   if (rows.length === 0) {
     return (
-      <div className="rounded-[16px] border border-dashed border-[#1f1f1f] py-12 text-center font-manrope text-[13px] text-[#737780]">
+      <div className="rounded-[16px] border border-dashed border-[var(--st-border)] py-12 text-center font-manrope text-[13px] text-[var(--st-fg-2)]">
         You haven&apos;t played any missions yet.  Head to{' '}
-        <Link href="/missions" className="text-[#a48dff] hover:underline">/missions</Link>.
+        <Link href="/missions" className="text-[#c5c3ff] hover:underline">/missions</Link>.
       </div>
     );
   }
@@ -398,11 +397,11 @@ function HistoryTable({ rows, signedIn }: { rows: HistoryRowDB[]; signedIn: bool
       </div>
       <div>
         {rows.map((row) => (
-          <div key={row.id} className="grid h-[64px] grid-cols-[120px_1fr_120px_120px_140px_140px_100px] items-center border-b border-[#1a1a1a]">
+          <div key={row.id} className="grid h-[64px] grid-cols-[120px_1fr_120px_120px_140px_140px_100px] items-center border-b border-[var(--st-border)]">
             <Cell>
               <div className="flex flex-col">
                 <span className="font-mono text-[11px] text-[#f8f9fa]">{formatDate(row.started_at)}</span>
-                <span className="font-mono text-[10px] text-[#737780]">{formatTime(row.started_at)}</span>
+                <span className="font-mono text-[10px] text-[var(--st-fg-2)]">{formatTime(row.started_at)}</span>
               </div>
             </Cell>
             <Cell>
@@ -424,7 +423,7 @@ function HistoryTable({ rows, signedIn }: { rows: HistoryRowDB[]; signedIn: bool
               <Stars n={row.stars ?? 0} />
             </Cell>
             <Cell>
-              <span className="font-mono text-[12px] text-[#a48dff]">
+              <span className="font-mono text-[12px] text-[#c5c3ff]">
                 {row.xp_awarded !== null ? `+${row.xp_awarded}` : 'Pending'}
               </span>
             </Cell>
@@ -437,10 +436,10 @@ function HistoryTable({ rows, signedIn }: { rows: HistoryRowDB[]; signedIn: bool
 
 function DifficultyChip({ value }: { value: HistoryRowDB['mission_difficulty'] }) {
   const palette: Record<HistoryRowDB['mission_difficulty'], string> = {
-    easy:   'bg-[rgba(174,255,24,0.15)] text-[#aeff18]',
-    medium: 'bg-[rgba(54,118,248,0.15)] text-[#3676f8]',
-    hard:   'bg-[rgba(239,75,220,0.15)] text-[#ef4bdc]',
-    expert: 'bg-[rgba(239,68,68,0.18)] text-[#ef4444]',
+    easy:   'bg-[rgba(88,86,214,0.10)] text-white border border-[rgba(88,86,214,0.4)]',
+    medium: 'bg-[rgba(255,255,255,0.06)] text-[rgba(255,255,255,0.70)]',
+    hard:   'bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.55)]',
+    expert: 'bg-[rgba(255,255,255,0.04)] text-[rgba(255,255,255,0.40)] border border-[rgba(88,86,214,0.5)]',
   };
   return (
     <span className={`inline-flex rounded-[6px] px-[8px] py-[4px] font-manrope text-[12px] font-medium capitalize ${palette[value]}`}>
@@ -451,11 +450,11 @@ function DifficultyChip({ value }: { value: HistoryRowDB['mission_difficulty'] }
 
 function StatusChip({ value }: { value: HistoryRowDB['status'] }) {
   const palette: Record<HistoryRowDB['status'], { dot: string; text: string }> = {
-    running:   { dot: 'bg-[#737780]', text: 'text-[#a8a8b0]' },
-    success:   { dot: 'bg-[#22c55e]', text: 'text-[#22c55e]' },
-    failed:    { dot: 'bg-[#ef4444]', text: 'text-[#ef4444]' },
-    timeout:   { dot: 'bg-[#facc15]', text: 'text-[#facc15]' },
-    abandoned: { dot: 'bg-[#737780]', text: 'text-[#a8a8b0]' },
+    running:   { dot: 'bg-[rgba(255,255,255,0.40)]', text: 'text-[rgba(255,255,255,0.65)]' },
+    success:   { dot: 'bg-[#5856d6]',                text: 'text-[#c5c3ff]' },
+    failed:    { dot: 'bg-[rgba(255,255,255,0.35)]', text: 'text-[rgba(255,255,255,0.50)]' },
+    timeout:   { dot: 'bg-[rgba(255,255,255,0.35)]', text: 'text-[rgba(255,255,255,0.50)]' },
+    abandoned: { dot: 'bg-[rgba(255,255,255,0.22)]', text: 'text-[rgba(255,255,255,0.40)]' },
   };
   const c = palette[value];
   return (

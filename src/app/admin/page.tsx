@@ -36,21 +36,21 @@ export default async function AdminHomePage() {
         <div className="flex items-center gap-2">
           <Link
             href="/admin/xp"
-            className="flex items-center gap-2 rounded-full border border-[#1f1f1f] px-4 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:border-[#7C5CFC] hover:text-white"
+            className="flex items-center gap-2 rounded-full border border-[var(--st-border)] px-4 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:border-[#5856d6] hover:text-white"
           >
             <Sparkles size={16} strokeWidth={1.75} />
             XP payouts
           </Link>
           <Link
             href="/admin/attempts"
-            className="flex items-center gap-2 rounded-full border border-[#1f1f1f] px-4 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:border-[#7C5CFC] hover:text-white"
+            className="flex items-center gap-2 rounded-full border border-[var(--st-border)] px-4 py-2 font-manrope text-[13px] text-[#a8a8b0] hover:border-[#5856d6] hover:text-white"
           >
             <BarChart3 size={16} strokeWidth={1.75} />
             User attempts
           </Link>
           <Link
             href="/admin/missions/new"
-            className="flex items-center gap-2 rounded-full border border-[#040404] bg-[rgba(248,249,250,0.06)] px-4 py-2 font-manrope text-[13px] text-[#f8f9fa] hover:bg-[rgba(248,249,250,0.1)]"
+            className="st-btn st-btn--primary rounded-full px-4 py-2 font-manrope text-[13px]"
           >
             <Plus size={16} strokeWidth={1.75} />
             New mission
@@ -65,11 +65,11 @@ export default async function AdminHomePage() {
       )}
 
       {missions.length === 0 ? (
-        <div className="rounded-[16px] border border-dashed border-[#1f1f1f] py-16 text-center">
-          <p className="font-manrope text-[14px] text-[#737780]">No missions yet.</p>
+        <div className="rounded-[16px] border border-dashed border-[var(--st-border)] py-16 text-center">
+          <p className="font-manrope text-[14px] text-[var(--st-fg-2)]">No missions yet.</p>
           <Link
             href="/admin/missions/new"
-            className="mt-3 inline-block font-manrope text-[13px] text-[#7C5CFC] hover:underline"
+            className="mt-3 inline-block font-manrope text-[13px] text-[#5856d6] hover:underline"
           >
             Create the first one →
           </Link>
@@ -79,7 +79,7 @@ export default async function AdminHomePage() {
           {missions.map((m) => (
             <div
               key={m.id}
-              className="rounded-[16px] border border-[rgba(248,249,250,0.1)] bg-[rgba(248,249,250,0.02)] p-5 transition-colors hover:border-[rgba(248,249,250,0.2)]"
+              className="rounded-[16px] border border-[var(--st-border)] bg-[var(--st-glass)] p-5 transition-colors hover:border-[var(--st-border-2)]"
             >
               <Link href={`/admin/missions/${m.id}`} className="block">
                 <h3 className="font-manrope mb-1 text-[18px] font-semibold text-[#f8f9fa]">
@@ -92,7 +92,7 @@ export default async function AdminHomePage() {
                 )}
               </Link>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 text-[11px] text-[#737780]">
+                <div className="flex items-center gap-4 text-[11px] text-[var(--st-fg-2)]">
                   <span className="flex items-center gap-1">
                     <ListChecks size={12} strokeWidth={1.75} />
                     {(m.steps?.length ?? 0)} steps
@@ -104,7 +104,7 @@ export default async function AdminHomePage() {
                 </div>
                 <Link
                   href={`/missions/${m.id}/play`}
-                  className="flex items-center gap-1 rounded-full bg-[#7C5CFC]/20 px-3 py-1 font-manrope text-[11px] font-medium text-[#a48dff] hover:bg-[#7C5CFC]/30"
+                  className="flex items-center gap-1 rounded-full bg-[#5856d6]/20 px-3 py-1 font-manrope text-[11px] font-medium text-[#c5c3ff] hover:bg-[#5856d6]/30"
                 >
                   <Play size={11} strokeWidth={2} /> Play
                 </Link>
